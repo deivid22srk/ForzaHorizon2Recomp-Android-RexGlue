@@ -94,5 +94,27 @@ includes = []
 
 # Iteração 3: única função não resolvida do módulo XMediaFacade
 # (alvo de b direto a partir de 0x880503D0).
+#
+# Iteração 6 (device real, log3.zip 2026-09-17, moto g34 5G): a 4ª sessão de
+# device confirmou a correção do dlopen (run #12) — o XMediaFacade agora
+# carrega e executa sua inicialização CRT, e o walker de construtores do
+# módulo (sub_881E8D88, homólogo de sub_82BFF9E8 do módulo principal)
+# percorre as tabelas de ponteiros em 0x88250000..0x88250028 chamando cada
+# entrada via bctrl. Evidência: "[FATAL] Call to invalid or unregistered
+# function at guest address 0x882435D8" durante LoadUserModule
+# (XMediaFacade_default.xex). Regiões extraídas do código recompilado:
+#   single-word 0x8800052C -> 0x88050958 (registrada),
+#   [0x88250000,0x8825000C) sub_881E8E68 (0x881F05B0, 0x881F0D38 — registradas),
+#   [0x8825001C,0x88250028) loop 1 (0x88052FD8, 0x881EF4B8 — registradas),
+#   [0x88250010,0x88250018) loop 2 (0x882435D8 — NÃO registrada).
+# 0x882435D8 é um thunk de 3 instruções (addis r11,0x882A; addi r3,0x50B0;
+# b <helper CRT>) em gap entre sub_88242BC0 e sub_882435E8, com fluxo do
+# antecessor comprovadamente desviado antes dele (bc/b bcc) — seguro tagar.
+# O módulo SpeechFacade foi analisado com o mesmo método (walker
+# sub_891F0058 + sub_891F0138; tabelas 0x89210000..0x89210094 e single-word
+# 0x8900068C): 32/32 alvos já registrados — nada a tagar.
+#
+# NOTA TOML: [modules.functions] anexa-se ao ÚLTIMO [[modules]] (XMediaFacade).
 [modules.functions]
 0x88055B80 = {}
+0x882435D8 = {}

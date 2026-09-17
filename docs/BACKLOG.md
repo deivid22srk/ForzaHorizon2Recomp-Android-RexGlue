@@ -1,6 +1,6 @@
 # Backlog e estado do runtime
 
-Última atualização: 2026-09-17 (v0.1.1 — iteração de runtime #2)
+Última atualização: 2026-09-17 (v0.1.3 — iteração de runtime #4)
 
 ## Como este backlog funciona
 
@@ -84,6 +84,28 @@ comentada) → codegen → CI → novo APK.
   para nomes já canônicos). Validado em host com lib de teste: 5/5 checks
   (nome cru carrega, símbolo exportado resolvível, nome canônico inalterado,
   lib ausente falha com erro acionável no `last_error`).
+
+### Evidências — quarta sessão (2026-09-17, APK run #12, `log3.zip`)
+
+- ✅ **Correção do dlopen confirmada em device**: o XMediaFacade foi
+  carregado (`dlopen` na forma canônica ok), sua função table inicializada
+  (`code=88050000-8824873C`) e 3.196 funções registradas.
+- ❌ Novo ponto de falha (dentro da init CRT do módulo): o walker de
+  construtores do próprio facade (`sub_881E8D88`) chamou
+  `0x882435D8` — não registrada → `[FATAL]` + SIGABRT. Corrigido na
+  iteração 6 (1 tag em `[modules.functions]`); SpeechFacade auditado
+  preventivamente (32/32 alvos já registrados, zero tags).
+- ⚠️ Observações não fatais da sessão (não bloqueiam o boot, registrar
+  aqui até virarem itens priorizados):
+  - `NtCreateFile('cache:\')` → `0xc000000f`: o título tenta abrir o
+    device de cache e o runtime não registra `cache:`. Hoje o jogo segue
+    (trata o erro), mas mecânicas que escrevem cache podem degradar.
+    Candidato a fix: symlink `cache:` → diretório interno do app.
+  - `SDL GameControllerDB: file 'gamecontrollerdb.txt' does not exist`:
+    mapeamento estendido de gamepads ausente no APK. Impacto baixo
+    (Xbox 360 pad nativo já é reconhecido pelo SDL embutido).
+  - `NtCreateFile('\Device\Image')` → `0xc000000f`: probe padrão do
+    título, segue após o erro — apenas ruído de log.
 
 ## Runtime (esperado, por modelo de port)
 

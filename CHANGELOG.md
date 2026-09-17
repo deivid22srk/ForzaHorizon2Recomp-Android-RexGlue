@@ -1,5 +1,34 @@
 # Changelog — ForzaHorizon2Recomp-Android-RexGlue
 
+## v0.1.3 (2026-09-17)
+
+Ciclo de iteração de runtime #4 (evidências da quarta sessão em device,
+`log3.zip`).
+
+- **Confirmação da correção do dlopen (run #12)**: o XMediaFacade agora é
+  carregado e seu código executa — a sessão 3 de device chegava a
+  "Failed to load shared library for module 'xmediafacade_default.xex'" e
+  abortava; a sessão 4 passou desse ponto e registrou 3.196 funções do
+  módulo.
+- **Iteração 6 de codegen — 1 novo alvo tagado** no `[modules.functions]`
+  (XMediaFacade): `0x882435D8`. O walker de construtores CRT do próprio
+  módulo (`sub_881E8D88`, homólogo de `sub_82BFF9E8` do módulo principal)
+  percorre tabelas de ponteiros em `0x88250000..0x88250028` e chama cada
+  entrada via `bctrl`; `0x882435D8` era a única entrada não registrada
+  (evidência: `[FATAL] Call to invalid or unregistered function at guest
+  address 0x882435D8` durante o `LoadUserModule`, crash em
+  `function_dispatcher.cpp:39` + SIGABRT).
+- **Análise proativa do SpeechFacade** com o mesmo método (walkers
+  `sub_891F0058`/`sub_891F0138`, tabelas em `0x89210000..0x89210094` +
+  single-word `0x8900068C`): 32/32 alvos já registrados — nenhuma tag
+  necessária. Evita uma 5ª sessão de device apenas para descobrir o mesmo
+  crash no próximo facade a ser carregado.
+- Segurança da tag verificada contra a lição da iteração 5: `0x882435D8`
+  está em gap entre `sub_88242BC0` e `sub_882435E8`, é um thunk real de 3
+  instruções (addis/addi/b) e o fluxo da função antecessora desvia antes
+  dele (bc condicional + b incondicional) — não há risco de quebrar a
+  tradução de função existente.
+
 ## v0.1.2 (2026-09-17)
 
 Ciclo de iteração de runtime #3 (evidências da terceira sessão em device).
