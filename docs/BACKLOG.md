@@ -10,8 +10,33 @@ no GitHub quando ganha prioridade.
 
 ## Fase atual: validação em device
 
-A infraestrutura está completa (codegen ✅, CI ✅, APK assinado ✅). A fase
-seguinte exige **testes em device real** para classificar os itens abaixo.
+A infraestrutura está completa (codegen ✅, CI ✅, APK assinado ✅).
+
+### Evidências de device real (moto g34 5G, Adreno, Android 15 / SDK 35)
+
+Primeira sessão (2026-09-17, APK run #6):
+
+- ✅ Instalação, tela inicial Compose, seleção de dados, GameActivity.
+- ✅ `libfh2.so` carregado via classloader; SDL3 sobe; contexto SDL ok.
+- ✅ `ReXApp::OnInitialize -> ok` (~8 s: kernel init + load do xex + recomp).
+- ✅ **Código guest começou a executar** (~200 ms de execução real).
+- ❌ Crash esperado desta fase: `[FATAL] Call to invalid or unregistered
+  function at guest address 0x83243750` (function_dispatcher.cpp:39) —
+  chamada indireta (ponteiro de função/vtable) para função não descoberta
+  pela análise estática. Corrigido no manifest (iteração 4, commit
+  correspondente); próximos alvos serão tratados igualmente.
+- ℹ️ Duplicatas de `cvar: duplicate registration` (present_*, vulkan_*,
+  window_*...) são INOFENSIVAS ("second registration ignored"): os TUs do
+  `rex::ui` (OBJECT lib, dentro do libfh2.so) e do `librexruntime.so`
+  registram os mesmos cvars estáticos — comportamento estrutural do SDK,
+  presente também no port de referência. Tratamento: ignorar (o primeiro
+  registro vence; mesmos defaults).
+- ℹ️ Backtrace do crash handler funcionou (fh2-rex + abort + frames com
+  símbolos) — valida a cadeia de diagnóstico.
+
+Loop de iteração desta fase: cada novo endereço "unregistered function" que
+aparecer em device = nova entrada em `[entrypoint.functions]` (com evidência
+comentada) → codegen → CI → novo APK.
 
 ## Runtime (esperado, por modelo de port)
 
