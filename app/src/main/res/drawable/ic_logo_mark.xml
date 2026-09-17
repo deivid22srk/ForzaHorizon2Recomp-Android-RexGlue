@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Marca do port Forza Horizon 2 Recomp: velocímetro minimalista — arco de
+  210 graus, ponteiro a ~45 graus e pino central. Paleta ciano do port
+  (#3EC6FF sobre #0B1520).
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Arco do mostrador (210° abertos embaixo) -->
+    <path
+        android:pathData="M4.6,14.4 A8.2,8.2 0 1,1 19.4,14.4"
+        android:strokeColor="#3EC6FF"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:fillColor="#00000000" />
+
+    <!-- Marcações do mostrador -->
+    <path
+        android:pathData="M5.2,9.6 L6.9,10.5 M9.1,5.9 L9.7,7.7 M14.9,5.9 L14.3,7.7 M18.8,9.6 L17.1,10.5"
+        android:strokeColor="#3EC6FF"
+        android:strokeWidth="0.9"
+        android:strokeLineCap="round" />
+
+    <!-- Ponteiro -->
+    <path
+        android:pathData="M12,12 L16.2,8.6"
+        android:strokeColor="#3EC6FF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round" />
+
+    <!-- Pino central -->
+    <path
+        android:pathData="M12,12 m-1.15,0 a1.15,1.15 0 1,0 2.3,0 a1.15,1.15 0 1,0 -2.3,0 Z"
+        android:fillColor="#3EC6FF" />
+
+    <!-- Sombra de velocidade -->
+    <path
+        android:pathData="M7.4,18.2 L16.6,18.2"
+        android:strokeColor="#1B6CA8"
+        android:strokeWidth="1.1"
+        android:strokeLineCap="round" />
+</vector>
