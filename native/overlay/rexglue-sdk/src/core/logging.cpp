@@ -227,7 +227,7 @@ void InitLoggingEarly() {
   // o boot inteiro do motor é invisível (ex.: tela preta sem diagnóstico).
   // ChunkedAndroidSink: mensagens longas são fatiadas (~3500 B) porque o
   // logd trunca em ~4068 B — sem isso, stack traces/dumps saem mutilados.
-  auto sink = std::make_shared<ChunkedAndroidSink>("restuff-rex");
+  auto sink = std::make_shared<ChunkedAndroidSink>("fh2-rex");
 #else
   auto sink = std::make_shared<spdlog::sinks::stdout_sink_mt>();
 #endif
@@ -334,7 +334,7 @@ void InitLogging(const LogConfig& config) {
       g_file_sink = sink;
       sink_ok = true;
     } catch (const std::exception& e) {
-      __android_log_print(ANDROID_LOG_ERROR, "restuff-rex",
+      __android_log_print(ANDROID_LOG_ERROR, "fh2-rex",
                           "log file '%s' inacessível: %s — caindo para o storage "
                           "privado",
                           resolved_path.c_str(), e.what());
@@ -349,7 +349,7 @@ void InitLogging(const LogConfig& config) {
       try {
         auto fallback_path =
             NextSequentialLogPath(std::filesystem::path(fallback_dir),
-                                  config.app_name.empty() ? "restuff" : config.app_name);
+                                  config.app_name.empty() ? "fh2" : config.app_name);
         auto sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(
             fallback_path, static_cast<size_t>(REXCVAR_GET(log_max_file_size_mb)) * 1024 * 1024,
             static_cast<size_t>(REXCVAR_GET(log_max_files)), false);
@@ -357,11 +357,11 @@ void InitLogging(const LogConfig& config) {
         sink->set_pattern(config.file_pattern);
         g_file_sink = sink;
         sink_ok = true;
-        __android_log_print(ANDROID_LOG_WARN, "restuff-rex",
+        __android_log_print(ANDROID_LOG_WARN, "fh2-rex",
                             "log ativo (fallback): %s", fallback_path.string().c_str());
       } catch (const std::exception& e2) {
         __android_log_print(
-            ANDROID_LOG_ERROR, "restuff-rex",
+            ANDROID_LOG_ERROR, "fh2-rex",
             "log em arquivo indisponível (%s) — seguindo apenas com logcat",
             e2.what());
       }
@@ -390,7 +390,7 @@ void InitLogging(const LogConfig& config) {
   // além do arquivo rotativo — diagnóstico no device sem adb pull. O sink do
   // stdout é inútil aqui (app_process → /dev/null). ChunkedAndroidSink: fatia
   // mensagens > ~3500 B (logd trunca em ~4068 B) — stack traces inteiros.
-  g_extra_sinks.push_back(std::make_shared<ChunkedAndroidSink>("restuff-rex"));
+  g_extra_sinks.push_back(std::make_shared<ChunkedAndroidSink>("fh2-rex"));
 #endif
 
   // Rebuild all loggers with new sinks

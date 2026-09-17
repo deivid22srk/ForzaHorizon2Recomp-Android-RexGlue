@@ -30,6 +30,12 @@ includes = []
 0x82CBFCB8 = {}
 0x82CBFCC8 = {}
 0x82CBFCD0 = {}
+# Iteração 4 (device real, moto g34 5G, 2026-09-17): chamada indireta a
+# 0x83243750 — ponteiro de função (tabela/vtable) para função não descoberta
+# pela análise. Evidência: "[FATAL] Call to invalid or unregistered function
+# at guest address 0x83243750" (function_dispatcher.cpp:39) ~200ms após o
+# OnInitialize; vizinhas sub_83243030..sub_83243180 já eram conhecidas.
+0x83243750 = {}
 
 # Módulos auxiliares do FH2 (carregados pelo jogo via XexLoadImage em runtime).
 # guest_path é normalizado (lowercase, sem device prefix) pelo loader.
