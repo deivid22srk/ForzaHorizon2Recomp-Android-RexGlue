@@ -62,9 +62,29 @@ Histórico real do FH2 (todas documentadas no manifest):
 | 2 | 4 endereços (0x82CBFCB8…CD0) | jump table alcançada a partir dos alvos da iteração 1 |
 | 3 | 1 endereço (0x855B80→0x88055B80, XMediaFacade) | `b` direto a partir de 0x880503D0 |
 | 4 | 1 endereço (0x83243750) | chamada indireta em DEVICE REAL (ponteiro de função/vtable) — crash function_dispatcher.cpp:39 ~200ms após OnInitialize; primeira evidência de execução guest |
+| 5 | 29 endereços (0x83243770…B0, 0x83250C50…B0, 0x83251980…E0, 0x8325F900…60, 0x8326F7C0…20) | tabelas de construtores CRT percorridas pelo walker `sub_82BFF9E8` no xstart — enumeradas por `tools/scan_indirect_targets.py` a partir da evidência de device (crash em 0x83243770); ver §3.1 |
 
 Convenção: cada entrada nova recebe comentário com a iteração e o motivo.
-**Nenhuma entrada é "chutada"** — todas vêm da saída do analisador.
+**Nenhuma entrada é "chutada"** — todas vêm da saída do analisador OU de
+evidência de device analisada com o método do §3.1.
+
+### 3.1 Alvos orientados a dados (tabelas em DATA)
+
+Chamadas indiretas cujo alvo vive em DATA (tabelas de ponteiros de função,
+vtables, jump tables) não são alcançáveis pela análise estática. Em device
+elas abortam com `Call to invalid or unregistered function`. Método de
+cobertura (usado na iteração 5):
+
+1. Ler o código recompilado da função chamadora (ex.: o walker de
+   construtores CRT `sub_82BFF9E8`) e extrair os limites das tabelas
+   (bounds `addi` dos loops de passo 4).
+2. `tools/xex_extract.py` produz a imagem carregada do .xex.
+3. `tools/scan_indirect_targets.py` enumera as palavras não-nulas (≠ -1)
+   das tabelas, subtrai as funções já registradas e lista as faltantes.
+4. Tagar somente o que tiver evidência de destino real — **não** tagar
+   runs de vtables em massa sem filtro extents-aware (lição da iteração 5:
+   2.528 `Unresolved conditional branch` — endereços dentro da extensão de
+   funções existentes quebram a tradução; ver `tools/README.md`).
 
 ### 4. Warnings de instrução não implementada
 

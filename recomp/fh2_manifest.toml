@@ -37,6 +37,47 @@ includes = []
 # OnInitialize; vizinhas sub_83243030..sub_83243180 já eram conhecidas.
 0x83243750 = {}
 
+# Iteração 5 (device real, log.zip 2026-09-17, moto g34 5G): o walker de
+# construtores CRT sub_82BFF9E8 percorre tabelas de ponteiros de função em
+# data e chama cada entrada não-nula (diferente de 0 e -1) via bctrl
+# durante o xstart. Evidência: "[FATAL] Call to invalid or unregistered
+# function at guest address 0x83243770". Enumeramos TODAS as entradas não
+# registradas dessas tabelas via tools/scan_indirect_targets.py (famílias:
+# 0x83243770-B0, 0x83250C50-B0, 0x83251980-E0, 0x8325F900-60, 0x8326F7C0-20).
+# NOTA: tags proativas de vtables/jump tables foram AVALIADAS E REJEITADAS —
+# endereços dentro da extensão de funções existentes quebram a tradução
+# (2528 'Unresolved conditional branch' → REX_FATAL). Plano extents-aware
+# documentado em docs/BACKLOG.md e na issue de tracking.
+0x83243770 = {}
+0x83243780 = {}
+0x83243790 = {}
+0x832437A0 = {}
+0x832437B0 = {}
+0x83250C50 = {}
+0x83250C70 = {}
+0x83250C80 = {}
+0x83250C90 = {}
+0x83250CA0 = {}
+0x83250CB0 = {}
+0x83251980 = {}
+0x832519A0 = {}
+0x832519B0 = {}
+0x832519C0 = {}
+0x832519D0 = {}
+0x832519E0 = {}
+0x8325F900 = {}
+0x8325F920 = {}
+0x8325F930 = {}
+0x8325F940 = {}
+0x8325F950 = {}
+0x8325F960 = {}
+0x8326F7C0 = {}
+0x8326F7E0 = {}
+0x8326F7F0 = {}
+0x8326F800 = {}
+0x8326F810 = {}
+0x8326F820 = {}
+
 # Módulos auxiliares do FH2 (carregados pelo jogo via XexLoadImage em runtime).
 # guest_path é normalizado (lowercase, sem device prefix) pelo loader.
 [[modules]]

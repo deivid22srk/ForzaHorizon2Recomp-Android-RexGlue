@@ -1,5 +1,24 @@
 # Changelog — ForzaHorizon2Recomp-Android-RexGlue
 
+## v0.1.1 (2026-09-17)
+
+Ciclo de iteração de runtime #2 (evidências da segunda sessão em device).
+
+- **Iteração 5 de codegen — 29 novos alvos tagados** no
+  `recomp/fh2_manifest.toml`: todas as entradas não registradas das tabelas
+  de construtores CRT percorridas pelo walker `sub_82BFF9E8` no xstart
+  (evidência: crash `[FATAL] … 0x83243770` em device real). A análise foi
+  feita com as novas ferramentas `tools/xex_extract.py` +
+  `tools/scan_indirect_targets.py` — encerra a dinâmica de um endereço por
+  rodada de device para esta classe de crash.
+- `tools/` + `docs/RECOMPILATION.md §3.1`: método documentado para alvos de
+  chamadas indiretas orientadas a dados (tabelas em DATA), com a lição do
+  experimento rejeitado de tagamento em massa de vtables (2.528
+  `Unresolved conditional branch` → plano extents-aware no backlog).
+- `docs/BACKLOG.md`: evidências da segunda sessão (ISO montada in-place com
+  2.996 arquivos, 85.420 funções registradas, imports krnl/xam patcheados),
+  baseline de warnings de codegen e plano de cobertura extents-aware.
+
 ## v0.1.0 (2026-09-17)
 
 Primeira versão pública do port Android.

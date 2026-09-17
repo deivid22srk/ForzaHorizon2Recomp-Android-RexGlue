@@ -1,6 +1,6 @@
 # Backlog e estado do runtime
 
-Última atualização: 2026-09-17 (v0.1.0 — primeiro pipeline completo)
+Última atualização: 2026-09-17 (v0.1.1 — iteração de runtime #2)
 
 ## Como este backlog funciona
 
@@ -38,6 +38,34 @@ Loop de iteração desta fase: cada novo endereço "unregistered function" que
 aparecer em device = nova entrada em `[entrypoint.functions]` (com evidência
 comentada) → codegen → CI → novo APK.
 
+### Evidências — segunda sessão (2026-09-17, APK run #8, `log.zip`)
+
+- ✅ **ISO montada in-place**: `DiscImageDevice` monta a ISO do jogo direto
+  do armazenamento (`2996 files, 7917078618 bytes`) e publica os symlinks
+  `game:` e `d:` — sem extração prévia.
+- ✅ **85.420 funções recompiladas registradas** (0 duplicatas, 0
+  rejeitadas); imports xboxkrnl (219) e xam (182) patcheados; achievement
+  store com 46 entradas do título carregada.
+- ✅ Driver Vulkan custom (Turnip via AdrenoTools) carregado do
+  app-private dir; crash handler gravando log em storage.
+- ❌ Crash no boot do módulo: `[FATAL] Call to invalid or unregistered
+  function at guest address 0x83243770` dentro de `sub_82BFF9E8`
+  (`xstart` → Kernel Dispatch) — o walker de construtores CRT chama
+  entradas de tabelas em DATA que a análise estática não alcança.
+- ✅ Correção (iteração 5): TODAS as 29 entradas não registradas dessas
+  tabelas enumeradas com `tools/scan_indirect_targets.py` e tagadas de uma
+  vez (famílias 0x83243770-B0, 0x83250C50-B0, 0x83251980-E0, 0x8325F900-60,
+  0x8326F7C0-20) — encerra a dinâmica de um endereço por rodada de device.
+  Codegen local revalidado: warnings idênticos ao baseline, TUs críticos
+  compilam limpos no host (clang 19).
+- ⚠️ Experimento REJEITADO no mesmo ciclo: tagar proativamente ~3.7k alvos
+  de vtables/jump tables (clusters de ponteiros na imagem) quebrou a
+  tradução de funções existentes — 2.528 `Unresolved conditional branch`
+  (REX_FATAL em runtime). Revertido; lição documentada em
+  `tools/README.md` e plano extents-aware no item abaixo.
+- ℹ️ `cvar: duplicate registration` persiste (inofensivo — ver primeira
+  sessão).
+
 ## Runtime (esperado, por modelo de port)
 
 - [ ] **Kernel exports do FH2**: o título usa um conjunto próprio de
@@ -46,6 +74,20 @@ comentada) → codegen → CI → novo APK.
       vira issue e implementação incremental no SDK/overlay.
 - [ ] **Unimplemented instructions**: auditar com
       `rexglue codegen --log-level trace`; cada opcode vira issue rastreada.
+      Baseline atual (4 warnings conhecidos, todos documentados em issues):
+      `bdz` fora de função em 0x82C5C388/0x82C5C38C, `Unresolved function
+      0x831D75A0` a partir de 0x831D5F58, função gigante 0x8242A170
+      (2.5 MB > max_file_size).
+- [ ] **Cobertura extents-aware de vtables/jump tables**: os 3.744 alvos
+      não registrados encontrados por cluster scan (1151 runs) NÃO foram
+      tagados em massa (ver lição da iteração 5). Plano: extrair extensões
+      reais das funções registradas (início + contagem de instruções do
+      codegen) e tagar apenas alvos FORA dessas extensões; validar com
+      codegen local (0 novos warnings) antes de qualquer push.
+- [ ] **Warnings de codegen baseline** (bdz ×2, unresolved 0x831D75A0):
+      investigar se são padrões legítimos do título (tail-call fora de
+      função / branches com destino computado) ou lacunas do analisador;
+      cada um vira issue com endereço e contexto.
 - [ ] **Boot do título**: primeiro log de device define os próximos passos
       (crash no load, tela preta, loop de exceção etc.).
 - [ ] **Streaming do mundo aberto**: FH2 é um título de streaming constante
@@ -57,11 +99,6 @@ comentada) → codegen → CI → novo APK.
 
 ## Motor (heranças do port de referência NÃO portadas)
 
-- [ ] **Cap de FPS engine-side**: os cvars `fps_cap`/`vblank_hz` são
-      aceitos pelo SDK (warn se desconhecidos), mas o limiter por software
-      presente no port de referência (hook de present) não existe ainda
-      neste port. Os chips 30/60/90/120 do painel rápido aplicam o cvar ao
-      vivo; efeito final depende do pacing do SDK.
 - [ ] **Release pipeline** (`release.yml` adaptado com verificação de CN e
       GitHub Release automática) — o `build.yml` já entrega APKs assinados
       por run.
