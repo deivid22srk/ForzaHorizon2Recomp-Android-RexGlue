@@ -42,9 +42,9 @@ object NativeBridge {
 
     /**
      * Limite de FPS ao vivo (painel de 4 dedos): escreve no cvar `fps_cap`
-     * do motor — o mesmo que o limiter de software do guest (on_swap) e o
-     * pacing do present thread leem por frame/iteração. Aplica na hora, sem
-     * reiniciar o jogo.
+     * do motor — o leitor é o pacing de present do presenter Vulkan
+     * (PaintAndPresentImpl dorme o excedente de 1/cap por frame). Aplica na
+     * hora, sem reiniciar o jogo.
      *
      * @param fps 0 = ilimitado; 30/60/90/120 = cap em quadros por segundo
      *            (limitado a 240 pelo validador do cvar)

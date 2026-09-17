@@ -4,7 +4,8 @@
  * Cada opção deste modelo é de fato consumida (nada aqui é cenográfico):
  *
  *   fpsLimit          → cvar "fps_cap" do motor (via fh2.toml + JNI ao vivo)
- *   vblankHz          → cvar "vblank_hz" (thread de pump do backend Vulkan)
+ *   vblankHz          → cvar "video_mode_refresh_rate" do SDK (fh2.toml;
+ *                       requer reinício do modo de vídeo guest)
  *   showFpsCounter    → pill mono sobre o jogo lendo os presents Vulkan
  *                       REAIS (JNI nativeGetPresentCount — trampoline no
  *                       vulkan_device.cpp conta cada vkQueuePresentKHR)
@@ -29,7 +30,8 @@ import android.content.Context
 
 /**
  * Limite de quadros por segundo aplicado como cvar "fps_cap" do motor
- * (0 = ilimitado; vblank_hz continua limitando por hardware).
+ * (0 = ilimitado; o pacing de present do motor e o refresh do modo de
+ * vídeo guest — video_mode_refresh_rate — continuam limitando).
  */
 enum class FpsLimitOption(val label: String, val fps: Int) {
     FPS_30("30", 30),
@@ -46,7 +48,7 @@ enum class FpsLimitOption(val label: String, val fps: Int) {
 data class PortSettings(
     // Desempenho (motor)
     val fpsLimit: FpsLimitOption = FpsLimitOption.FPS_60,
-    val vblankHz: Int = 120,                    // 30 .. 240 (cvar vblank_hz)
+    val vblankHz: Int = 120,                    // 30 .. 240 (cvar video_mode_refresh_rate)
     // Contador de FPS sobre o jogo: lê o total de vkQueuePresentKHR do
     // dispositivo Vulkan (contado por um trampoline no vulkan_device.cpp)
     // e calcula a taxa no próprio overlay — nada de estimativa por

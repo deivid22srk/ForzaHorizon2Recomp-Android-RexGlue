@@ -13,15 +13,13 @@ android {
         minSdk = 26
         targetSdk = 35
         // versionCode acompanha o número do run do GitHub Actions: cada build
-        // nova instala por cima da anterior (in-place upgrade). O workflow de
-        // release (release.yml) sobrepõe via FH2_VERSION_CODE =
-        // AAAAMMDD*100 + <run do release.yml> — sempre maior que qualquer run
-        // number do build.yml e monotônico no tempo (segunda release no mesmo
-        // dia ganha sufixo +N).
+        // nova instala por cima da anterior (in-place upgrade). Para builds
+        // locais/manual overrides, FH2_VERSION_CODE sobrepõe o run number —
+        // mantendo a sequência monotônica entre reinstalações.
         versionCode = System.getenv("FH2_VERSION_CODE")?.toIntOrNull()
             ?: System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        // release.yml sobrepõe o nome da versão (ex: "1.1.0", casando com a tag
-        // da GitHub Release); builds de CI continuam com "1.0.<run>".
+        // FH2_VERSION_NAME sobrepõe o nome da versão (ex.: tag de release);
+        // builds de CI continuam com "1.0.<run>".
         versionName = System.getenv("FH2_VERSION_NAME")
             ?: "1.0.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}"
 
@@ -52,11 +50,11 @@ android {
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
-        // Keystore de RELEASE dedicado (assina os APKs do release.yml).
+        // Keystore de RELEASE dedicado (assina os APKs release do build.yml).
         // Sobrescrevível por env p/ assinar com chave própria sem editar o
-        // repo (FH2_STORE_PASSWORD/FH2_KEY_ALIAS/FH2_KEY_PASSWORD).
-        // NOTA: builds de CI anteriores a v1.1.0 usavam a assinatura de DEBUG —
-        // a primeira instalação desta exigiu desinstalar a versão anterior.
+        // repo (FH2_STORE_PASSWORD/FH2_KEY_ALIAS/FH2_KEY_PASSWORD). O SHA-256
+        // de cada APK é impresso no log e publicado no artefato
+        // SHA256SUMS.txt para conferência de integridade (FAQ do README).
         create("release") {
             storeFile = rootProject.file("keystore/release.keystore")
             storePassword = System.getenv("FH2_STORE_PASSWORD") ?: "fh2recomp-release-2026"
@@ -72,9 +70,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Assinatura de release dedicada (keystore/release.keystore) — o
-            // release.yml verifica o certificado com apksigner antes de
-            // publicar a GitHub Release.
+            // Assinatura de release dedicada (keystore/release.keystore) —
+            // usada pelo build.yml para os APKs release de cada run.
             signingConfig = signingConfigs.getByName("release")
         }
     }

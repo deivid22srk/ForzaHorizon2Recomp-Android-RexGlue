@@ -44,7 +44,7 @@
 #include <rex/ui/windowed_app_context_sdl.h>
 
 // Port Android (ForzaHorizon2Recomp-Android-RexGlue): crash handler — ver
-// InstallCrashHandler/RestuffCrashHandler abaixo.
+// Fh2CrashHandler abaixo (backtrace + persistência do log).
 #include <cerrno>
 #include <cstdint>
 #include <dlfcn.h>

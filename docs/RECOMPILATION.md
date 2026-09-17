@@ -89,8 +89,10 @@ cobertura (usado na iteração 5):
 ### 4. Warnings de instrução não implementada
 
 Toda ocorrência é tratada como **item de backlog rastreável** (issue no
-GitHub com o endereço e o opcode), nunca ignorada silenciosamente. Para
-auditar:
+GitHub com o endereço e o opcode), nunca ignorada silenciosamente. Issues
+abertas hoje: #1 (`bdz` 0x82C5C388/0x82C5C38C), #2 (`Unresolved function
+0x831D75A0`), #3 (função gigante 0x8242A170), #4 (tracking da cobertura
+extents-aware de vtables/jump tables). Para auditar:
 
 ```bash
 rexglue codegen fh2_manifest.toml --log-level trace 2>&1 | grep -i "unimplemented"

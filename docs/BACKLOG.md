@@ -74,17 +74,17 @@ comentada) → codegen → CI → novo APK.
       vira issue e implementação incremental no SDK/overlay.
 - [ ] **Unimplemented instructions**: auditar com
       `rexglue codegen --log-level trace`; cada opcode vira issue rastreada.
-      Baseline atual (4 warnings conhecidos, todos documentados em issues):
-      `bdz` fora de função em 0x82C5C388/0x82C5C38C, `Unresolved function
-      0x831D75A0` a partir de 0x831D5F58, função gigante 0x8242A170
-      (2.5 MB > max_file_size).
-- [ ] **Cobertura extents-aware de vtables/jump tables**: os 3.744 alvos
+      Baseline atual (4 warnings conhecidos, rastreados nas issues #1-#3):
+      `bdz` fora de função em 0x82C5C388/0x82C5C38C (#1), `Unresolved
+      function 0x831D75A0` a partir de 0x831D5F58 (#2), função gigante
+      0x8242A170 (2.5 MB > max_file_size, #3).
+- [ ] **Cobertura extents-aware de vtables/jump tables** (#4): os 3.744 alvos
       não registrados encontrados por cluster scan (1151 runs) NÃO foram
       tagados em massa (ver lição da iteração 5). Plano: extrair extensões
       reais das funções registradas (início + contagem de instruções do
       codegen) e tagar apenas alvos FORA dessas extensões; validar com
       codegen local (0 novos warnings) antes de qualquer push.
-- [ ] **Warnings de codegen baseline** (bdz ×2, unresolved 0x831D75A0):
+- [ ] **Warnings de codegen baseline** (issues #1, #2, #3):
       investigar se são padrões legítimos do título (tail-call fora de
       função / branches com destino computado) ou lacunas do analisador;
       cada um vira issue com endereço e contexto.
