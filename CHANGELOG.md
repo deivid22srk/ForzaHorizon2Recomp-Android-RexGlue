@@ -1,5 +1,39 @@
 # Changelog — ForzaHorizon2Recomp-Android-RexGlue
 
+## v0.1.4 (2026-09-17)
+
+Ciclo de iteração de runtime #5 (evidências da quinta sessão em device,
+`log4.zip`).
+
+- **Confirmação da correção do walker CRT do XMediaFacade (iteração 6)**: a
+  sessão passou da inicialização CRT do módulo — o boot avançou para a fase
+  de enumeração de conteúdo na thread principal (varredura de `\media`,
+  `XamContentCreateEnumerator`).
+- **Iteração 7 de codegen — 21 novos alvos tagados** no
+  `[entrypoint.functions]` (módulo principal). Evidência:
+  `[FATAL] Call to invalid or unregistered function at guest address
+  0x8319D238` a partir de `sub_8319CAC8` (+4408 no backtrace nativo), logo
+  após `XamContentCreateEnumerator: added 0 items to enumerator` — chamada
+  virtual via vtable para função não descoberta pela análise estática.
+- **Auditoria extents-aware da FAMÍLIA inteira de vtables** (método previsto
+  no backlog desde a iteração 5 e agora executado pela primeira vez): os
+  slots referenciados formam 5 cópias de vtables de classes de enumeração de
+  conteúdo (dados em `0x8229E594..0x8229EA34`). A varredura da região
+  contra a tabela de 85.449 funções registradas encontrou 21 alvos únicos
+  não registrados, todos verificados endereço a endereço:
+  - 18 thunks de 2 instruções (`addi r3,r3,-4; b <alvo>`), com todos os
+    alvos de desvio já registrados e cada thunk em gap entre irmãos da
+    mesma família de 8 bytes;
+  - 3 funções reais (prólogo limpo, extensão confirmada até o terminador
+    `bctr` — tail-call de método virtual com IID `0x1337F001`, família
+    QueryInterface): `0x8319D238` (o alvo do crash), `0x8319E478` e
+    `0x83198118`.
+- Nenhum dos 21 endereços cai dentro da extensão de uma função registrada —
+  o modo de falha da iteração 5 (2.528 "Unresolved conditional branch") está
+  estruturalmente excluído. Tagar a família completa de uma vez elimina 2-3
+  rodadas de device que crashariam nos slots irmãos (`D228`, `D230`,
+  `E448`...) na mesma sequência de boot.
+
 ## v0.1.3 (2026-09-17)
 
 Ciclo de iteração de runtime #4 (evidências da quarta sessão em device,

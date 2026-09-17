@@ -78,6 +78,51 @@ includes = []
 0x8326F810 = {}
 0x8326F820 = {}
 
+# Iteração 7 (device real, log4.zip 2026-09-17, moto g34 5G): a 5ª sessão
+# confirmou a correção do walker CRT do XMediaFacade — o boot avançou para a
+# fase de enumeração de conteúdo na thread principal (XamContentCreateEnumerator)
+# e crashou com "[FATAL] Call to invalid or unregistered function at guest
+# address 0x8319D238" a partir de sub_8319CAC8 (+4408, backtrace nativo).
+# 0x8319D238 é o slot de uma FAMÍLIA de 5 vtables de classes de enumeração
+# de conteúdo (dados em 0x8229E594..0x8229EA34, cópias a ~0xC8/0xD0 de
+# distância). Auditoria extents-aware da família INTEIRA (método previsto
+# no backlog desde a iteração 5, agora executado): 21 alvos não registrados,
+# TODOS verificados e seguros:
+#   - 18 thunks de 2 instruções (addi r3,r3,-4; b <alvo REGISTRADO>),
+#     cada um em gap entre thunks da mesma família de 8 bytes — o fluxo
+#     do antecessor desvia antes (b incondicional);
+#   - 3 funções reais com prólogo limpo e extensão confirmada até o
+#     terminador (bctr tail-call para método virtual com IID 0x1337F001 —
+#     família QueryInterface): 0x8319D238 (104 bytes, próxima registrada
+#     0x8319D330), 0x8319E478 (92 bytes, próxima 0x8319E578) e
+#     0x83198118 (88 bytes, próxima 0x83198178).
+# Nenhum dos 21 endereços cai dentro da extensão de função registrada
+# (checado endereço a endereço contra a tabela de 85.449 funções) —
+# nenhum risco do tipo "Unresolved conditional branch" da iteração 5.
+# Tagar a família completa de uma vez evita 2-3 rodadas extras de device
+# (os slots irmãos D228/D230 etc. crashariam na mesma sequência de boot).
+0x8319D218 = {}
+0x8319D228 = {}
+0x8319D230 = {}
+0x8319D238 = {}
+0x8319E448 = {}
+0x8319E450 = {}
+0x8319E458 = {}
+0x8319E460 = {}
+0x8319E468 = {}
+0x8319E470 = {}
+0x8319E478 = {}
+0x831980D8 = {}
+0x831980E0 = {}
+0x831980E8 = {}
+0x831980F0 = {}
+0x831980F8 = {}
+0x83198108 = {}
+0x83198110 = {}
+0x83198118 = {}
+0x83198170 = {}
+0x8319EB58 = {}
+
 # Módulos auxiliares do FH2 (carregados pelo jogo via XexLoadImage em runtime).
 # guest_path é normalizado (lowercase, sem device prefix) pelo loader.
 [[modules]]

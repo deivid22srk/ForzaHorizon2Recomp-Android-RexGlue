@@ -85,6 +85,29 @@ comentada) → codegen → CI → novo APK.
   (nome cru carrega, símbolo exportado resolvível, nome canônico inalterado,
   lib ausente falha com erro acionável no `last_error`).
 
+### Evidências — quinta sessão (2026-09-17, APK run #14, `log4.zip`)
+
+- ✅ **Iteração 6 confirmada em device**: o XMediaFacade passou da init CRT
+  (walker `sub_881E8D88` percorreu as tabelas e não encontrou mais alvos
+  não registrados). O boot avançou para a fase de enumeração de conteúdo
+  na thread principal (varredura de `\media`, XamContentCreateEnumerator).
+- ❌ Novo ponto de falha (thread principal, pós-enumerador):
+  `[FATAL] Call to invalid or unregistered function at guest address
+  0x8319D238` a partir de `sub_8319CAC8` (+4408) — slot de vtable de
+  família de classes de enumeração de conteúdo (5 cópias de vtable em
+  `0x8229E594..0x8229EA34`).
+- ✅ Correção (iteração 7): **auditoria extents-aware da FAMÍLIA inteira** —
+  o método previsto desde a iteração 5 foi executado pela primeira vez e
+  21 alvos únicos não registrados foram tagados de uma vez (18 thunks de
+  2 instruções com alvo registrado + 3 funções reais QueryInterface:
+  0x8319D238, 0x8319E478, 0x83198118), todos com gap/extensão verificados
+  endereço a endereço contra as 85.449 funções registradas. Evita 2-3
+  rodadas de device que crashariam nos slots irmãos.
+- ⚠️ Observações não fatais da sessão (mantidas das sessões anteriores):
+  - `NtCreateFile('game:\media\stringtables\en\')` → `0xc000000f`:
+    probe de diretório pelo título, segue após o erro — ruído de log.
+  - `cache:\` / `gamecontrollerdb.txt` / `\Device\Image`: ver 4ª sessão.
+
 ### Evidências — quarta sessão (2026-09-17, APK run #12, `log3.zip`)
 
 - ✅ **Correção do dlopen confirmada em device**: o XMediaFacade foi
@@ -125,6 +148,12 @@ comentada) → codegen → CI → novo APK.
       reais das funções registradas (início + contagem de instruções do
       codegen) e tagar apenas alvos FORA dessas extensões; validar com
       codegen local (0 novos warnings) antes de qualquer push.
+      **VALIDADO EM ESCALA DE FAMÍLIA (iteração 7)**: o método foi aplicado
+      pela primeira vez à família de vtables do enumerador de conteúdo
+      (21/21 alvos verificados e tagados, zero risco de extent overlap) —
+      o que falta agora é generalizar o filtro para os 3.744 alvos do
+      cluster scan global (mesma verificação, aplicada em lote com
+      relatório de rejeitados).
 - [ ] **Warnings de codegen baseline** (issues #1, #2, #3):
       investigar se são padrões legítimos do título (tail-call fora de
       função / branches com destino computado) ou lacunas do analisador;

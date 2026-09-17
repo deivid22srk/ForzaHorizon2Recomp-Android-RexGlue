@@ -72,3 +72,29 @@ Regra atual:
 2. Cobertura proativa de vtables/jump tables depende de um filtro
    **extents-aware** (tagar apenas endereços fora da extensão de funções já
    registradas) antes de qualquer nova tentativa — ver `docs/BACKLOG.md`.
+
+## ✅ Filtro extents-aware validado (iteração 7, log4.zip)
+
+O método do item 2 foi executado pela primeira vez na família de vtables
+do enumerador de conteúdo (5 cópias em `0x8229E594..0x8229EA34`), após o
+crash `0x8319D238` da quinta sessão de device. Procedimento — para CADA
+alvo não registrado encontrado nos slots:
+
+1. **Gap check**: vizinho registrado imediatamente abaixo e acima (tabela
+   de `fh2_init.cpp`); o alvo não pode cair dentro da extensão de nenhum
+   deles.
+2. **Desassemblia do antecessor**: o fluxo dele precisa desviar ANTES do
+   alvo (`b` incondicional, `blr`/`bctr`) — sem queda de fluxo possível.
+3. **Classificação do alvo**:
+   - *thunk de 2 instruções* (`addi r3,r3,-N; b <alvo>`): seguro por
+     construção, desde que o alvo do desvio seja uma função REGISTRADA;
+   - *função real*: prólogo limpo (acesso a campos de `this`) + extensão
+     varrida até o primeiro terminador incondicional (`blr`/`bctr`/`b`
+     para fora) + nenhum endereço registrado dentro da extensão.
+
+Resultado: 21/21 alvos verificados e tagados de uma vez (18 thunks + 3
+funções reais QueryInterface com IID `0x1337F001`), eliminando 2-3 rodadas
+de device nos slots irmãos. Scripts de referência:
+`disasm_8319D238.py`, `scan_refs_8319D238.py`, `audit_vtables_8229E9.py`,
+`extent_check.py` (pasta `scripts/` do ambiente de trabalho; a lógica está
+reproduzida nas descrições acima).
