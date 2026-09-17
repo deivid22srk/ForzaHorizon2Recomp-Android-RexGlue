@@ -1,5 +1,42 @@
 # Changelog — ForzaHorizon2Recomp-Android-RexGlue
 
+## v0.1.6 (2026-09-17)
+
+Ciclo de iteração de runtime #7 (sétima sessão em device, log via pastebin;
+build da iteração 8, run #16).
+
+- **Confirmação da iteração 8 em device**: 85.471 funções registradas; o
+  boot passou da enumeração de conteúdo e o **pipeline de áudio entrou em
+  operação real** — `AudioWorker` despachando o callback guest `831B1D50`
+  continuamente (`XAudioSubmitRenderDriverFrame` por frame,
+  `SDLAudioDriver::SubmitFrame` consumindo `queued_count` 1..8). Init de
+  mídia avançou por `\Media\Audio\Cars\*`, fontes `\media\ui\fonts` e
+  `XMPGetPlaybackController`.
+- **Iteração 9 de codegen — SWEEP GLOBAL de 81 novos alvos** no
+  `[entrypoint.functions]` (148 no total). Evidência: `[FATAL] Call to
+  invalid or unregistered function at guest address 0x831E77E0` a partir de
+  `sub_82C1FEB8` (+644) via `bctrl` em vtable (slot `0x822C1974`).
+- **`tools/audit_vtable_family.py` v3 — auditor extents-aware reescrito**
+  para tagging em massa seguro:
+  - **extents exatos** das 85.061 funções registradas extraídos dos .cpp
+    gerados (`scripts/extract_extents.py` → `extents_main.json`;
+    validado contra casos conhecidos — o heuristic antecessor da v2
+    aceitava bytes mid-function escondidos atrás de `b` forward
+    intra-função e foi aposentado);
+  - plausibilidade de primeira instrução (`bl`/`bctrl`/`bclr`/`mtctr`/
+    branch condicional na entrada = sítio mid-function → rejeita);
+  - aceitação em lote com detecção de overlap entre extents candidatos;
+  - downgrade em ponto fixo de candidatos com `b`/`bl` direto a alvo não
+    registrado dentro do extent (evita novos `UnresolvedCall`).
+- **Scanner global**: 11 clusters de bancos de ponteiros
+  `{funcptr,flag}`/vtables, 1.910 alvos alinhados não registrados → 102
+  SAFE únicos → 81 novos tags após deduplicação com as iterações 1-8
+  (o registry local ainda reflete o codegen base). Cada tag passou por:
+  alinhamento 4, fora de todo extent registrado exato, entrada plausível,
+  extent linear sem cruzar função registrada, sem chamada direta não
+  resolvida, sem overlap entre candidatos. Mapa dos bancos restantes
+  documentado em `docs/BACKLOG.md`.
+
 ## v0.1.5 (2026-09-17)
 
 Ciclo de iteração de runtime #6 (evidências da sexta sessão em device,

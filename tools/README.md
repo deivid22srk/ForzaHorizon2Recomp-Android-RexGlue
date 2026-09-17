@@ -69,11 +69,52 @@ Regra atual:
 1. Tagar SOMENTE alvos com evidência de destino real (crash em device,
    `UnresolvedCall` do analisador, ou tabelas de construtor CRT percorridas
    no boot — essas são funções de verdade e traduzem limpas).
-2. Cobertura proativa de vtables/jump tables depende de um filtro
-   **extents-aware** (tagar apenas endereços fora da extensão de funções já
-   registradas) antes de qualquer nova tentativa — ver `docs/BACKLOG.md`.
+2. Cobertura proativa de vtables/jump tables exige o filtro
+   **extents-aware v3** (abaixo) — nunca tagar endereço dentro da extensão
+   de função registrada.
 
-## ✅ Filtro extents-aware validado (iteração 7, log4.zip)
+## ✅ Auditor extents-aware v3 (iteração 9 — tagging em massa seguro)
+
+`audit_vtable_family.py` v3 executa o sweep global com segurança. Diferças
+críticas em relação à v2 (iterações 7/8):
+
+1. **Extents EXATOS** (não heuristic): `scripts/extract_extents.py` parseia
+   os `fh2_recomp.*.cpp` gerados (1 comentário = 1 instrução guest; labels
+   `loc_XXXXXXXX` ancoram endereços) e produz `extents_main.json` com o
+   intervalo exato de cada função registrada. O heuristic antecessor da v2
+   foi aposentado: um `b` forward INTRA-função fazia o antecessor parecer
+   "desviar antes do alvo" quando o alvo era byte mid-function (caso real:
+   `0x831E8A74`, `bctrl` dentro de `sub_831E89E8`).
+2. **Plausibilidade de entrada**: função real não começa com `bl`
+   (clobber de LR), `bctrl`/`bclr`/`mtctr` (dependentes de CTR/LR setados
+   antes) nem branch condicional (join point). `b`-first = tail-thunk de
+   1 instrução com validação de alvo.
+3. **Aceitação em lote**: candidatos aceitos em ordem crescente; candidato
+   cujo extent sobrepõe extent já aceito (em qualquer direção) é rejeitado
+   — impede dupla tradução em sweeps de centenas de alvos.
+4. **Downgrade de chamada direta não resolvida**: `b`/`bl` dentro do extent
+   apontando para alvo não registrado/aceito (ponto fixo) → rejeita o
+   candidato (evita novo `UnresolvedCall`/FATAL em runtime).
+5. **Dedup contra o manifest**: o registry gerado localmente pode estar
+   defasado (o codegen roda no CI) — remover tags já presentes no
+   `fh2_manifest.toml` antes de inserir os novos.
+
+```bash
+# extrair extents exatos (uma vez por build gerado)
+python3 scripts/extract_extents.py   # -> xex-cache/extents_main.json
+
+# sweep global (todos os clusters de dados)
+python3 tools/audit_vtable_family.py /tmp/default.img.bin 0x82000000 \
+    0x823F0000 0x832F258C recomp/generated/default/fh2_register.cpp \
+    xex-cache/extents_main.json --all
+```
+
+Resultado da iteração 9: 11 clusters / 1.910 alvos alinhados → 102 SAFE
+únicos → 81 novos tags (21 já tagados em iterações anteriores). A maioria
+esmagadora dos rejeitados (1.804/1.805) cai DENTRO de extents registrados —
+a checagem exata fazendo exatamente o trabalho que a iteração 5 exigia.
+
+## ✅ Filtro extents-aware v2 validado (iterações 7/8)
 
 O método do item 2 foi executado pela primeira vez na família de vtables
 do enumerador de conteúdo (5 cópias em `0x8229E594..0x8229EA34`), após o

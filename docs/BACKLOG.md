@@ -1,6 +1,6 @@
 # Backlog e estado do runtime
 
-Última atualização: 2026-09-17 (v0.1.3 — iteração de runtime #4)
+Última atualização: 2026-09-17 (v0.1.6 — iteração de runtime #5, sweep global extents-aware)
 
 ## Como este backlog funciona
 
@@ -84,6 +84,45 @@ comentada) → codegen → CI → novo APK.
   para nomes já canônicos). Validado em host com lib de teste: 5/5 checks
   (nome cru carrega, símbolo exportado resolvível, nome canônico inalterado,
   lib ausente falha com erro acionável no `last_error`).
+
+### Evidências — sétima sessão (2026-09-17 17:23, APK run #16, log via pastebin)
+
+- ✅ **Iteração 8 confirmada em device**: 85.471 funções registradas (+2) e
+  o antigo ponto de falha `0x830387E0` não reapareceu.
+- ✅ **Enumeração de conteúdo concluída** (`XamContentCreateEnumerator:
+  added 0 items`) e o pipeline de áudio entrou em OPERAÇÃO REAL: o
+  `AudioWorker` passou a despachar o callback guest `831B1D50` continuamente
+  (`XAudioSubmitRenderDriverFrame` por frame, `SDLAudioDriver::SubmitFrame`
+  consumindo `queued_count` 1..8) — primeiro loop de renderização de áudio
+  guest do port.
+- ✅ Init de mídia avançou: probes de `\Media\Audio\Cars\*` (EngineLFE,
+  Reflections, Turbos, Damage, Wind, ActiveAero, Tires, Suspension), fontes
+  `\media\ui\fonts` (JP.tex / JPB_charlist.ini) e `XMPGetPlaybackController`.
+- ❌ Novo ponto de falha (thread principal, ~7.5 s após boot):
+  `[FATAL] Call to invalid or unregistered function at guest address
+  0x831E77E0` a partir de `sub_82C1FEB8` (+644) via `bctrl` em slot de
+  vtable (`0x822C1974`, banco de dados `0x822C0000..0x822C8000`).
+- ✅ Correção (iteração 9): **SWEEP GLOBAL extents-aware v3** — o auditor
+  foi reescrito com extents EXATOS extraídos dos .cpp gerados
+  (`scripts/extract_extents.py`, 85.061 extents; o heuristic antecessor da
+  v2 aceitava bytes mid-function atrás de `b` forward intra-função —
+  aposentado), plausibilidade de primeira instrução, aceitação em lote com
+  detecção de overlap e downgrade de chamadas diretas não resolvidas.
+  Scanner global: 11 clusters / 1.910 alvos alinhados não registrados →
+  102 SAFE únicos → **81 novos tags** (inclui `0x831E77E0` e a família do
+  banco do crash). Registrar `d:\DebugOptions.ini` probe (0xc000000f) como
+  ruído normal (arquivo de debug do título, ausente no disco).
+- ℹ️ Mapa dos bancos restantes (para as próximas iterações — NÃO tagar às
+  cegas; a maioria dos alvos rejeitados é byte mid-function):
+  | Banco (data) | Alvos alinhados | SAFE v3 | Observação |
+  |---|---|---|---|
+  | `0x820E8000..0x820FB000` | 928 | 14 | maior banco (UI/framework) |
+  | `0x822C0000..0x822C8000` | 557 | 43 | banco do crash da 7ª sessão |
+  | `0x82108000..0x82109000` | 168 | 0 | padrão de jump-table — não tagar |
+  | `0x8236B000..0x8236D000` | 150 | 0 | idem — não tagar |
+  | `0x8229E000..0x822A3000` | 37 | 27 | família do enumerador (iteração 7) |
+  | `0x833CF58C..0x8367E58C` | 52 | 6 | pós-código (imports/exports) |
+  | pequenos (`0x8200E000`, `0x820CF000`) | 18 | 17 | dispatcher stubs |
 
 ### Evidências — sexta sessão (2026-09-17, APK run #15, `log5.zip`)
 

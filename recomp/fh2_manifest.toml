@@ -149,6 +149,126 @@ includes = []
 0x830387E0 = {}
 0x8303EE88 = {}
 
+# Iteração 9 (device real, 7ª sessão 2026-09-17 17:23, build da iteração 8):
+# confirmou a iteração 8 — 85.471 funções registradas, boot passou da
+# enumeração de conteúdo e o pipeline de áudio entrou em OPERAÇÃO REAL
+# (AudioWorker despachando o callback guest 831B1D50, XAudioSubmitRenderDriverFrame
+# por frame, SDLAudioDriver consumindo queued_count 1..8). Após probes de
+# \Media\Audio\Cars\* (EngineLFE/Turbos/Tires/Suspension), fontes \media\ui\fonts
+# e XMPGetPlaybackController, novo crash na thread principal:
+# "[FATAL] Call to invalid or unregistered function at guest address 0x831E77E0"
+# a partir de sub_82C1FEB8 (+644) via bctrl em vtable (slot 0x822C1974).
+# 0x831E77E0: thunk adjustor de 2 instruções (addi r3,r3,-4; b 0x831E7788 —
+# registrada), gap exato de 8 bytes entre 0x831E77D8 (thunk registrada) e
+# sub_831E77E8 (registrada) — padrão idêntico ao da iteração 8.
+#
+# SWEEP GLOBAL (tools/audit_vtable_family.py v3): o banco de dados 0x822C0000
+# revelou uma REDE de bancos de ponteiros {funcptr,flag}/vtables espalhados
+# pelo módulo. Scanner global: 11 clusters, 1.910 alvos alinhados não
+# registrados (~2.022 brutos). Upgrades do auditor para permitir tagging em
+# massa com segurança:
+#   - EXTENTS EXATOS das 85.061 funções registradas extraídos dos .cpp
+#     gerados (scripts/extract_extents.py -> xex-cache/extents_main.json;
+#     1 comentário = 1 instrução guest; validado: sub_831E77D8 termina
+#     exatamente em 0x831E77E0). O heuristic antecessor foi APOSENTADO —
+#     aceitava bytes mid-function escondidos atrás de b forward intra-função
+#     (ex.: 0x831E8A74, bctrl dentro de sub_831E89E8);
+#   - checagem de plausibilidade de primeira instrução (bl/bctrl/bclr/mtctr/
+#     branch condicional = rejeita — sítios mid-function);
+#   - aceitação em lote com detecção de overlap de extents entre candidatos;
+#   - downgrade em ponto fixo de candidatos com b/bl direto a alvo não
+#     registrado dentro do extent (evita novos UnresolvedCall/FATAL).
+# Resultado do sweep: 102 SAFE únicos (21 já tagados nas iterações 1-8 —
+# redescobertos porque o registry local ainda é do codegen base) -> 81 NOVOS
+# tags abaixo, todos com: alinhamento 4, fora de todo extent registrado
+# exato, entrada plausível, extent linear sem cruzar função registrada,
+# sem chamada direta não resolvida, sem overlap entre candidatos.
+# Bancos restantes documentados em docs/BACKLOG.md para as próximas iterações
+# (0x820E8000..0x820FB000 ~914 rejeitados, 0x8236B000 ~150, 0x82108000 ~168 —
+# majoritariamente bytes mid-function/jump-tables que NÃO devem ser tagados).
+
+0x824FDEE8 = {}
+0x824FDEF8 = {}
+0x824FDF08 = {}
+0x824FDF18 = {}
+0x824FDF28 = {}
+0x824FDF38 = {}
+0x824FDF48 = {}
+0x824FDF58 = {}
+0x824FDF68 = {}
+0x824FDF78 = {}
+0x824FDF88 = {}
+0x824FDFB0 = {}
+0x82B3A508 = {}
+0x82B3A5C8 = {}
+0x82B3A640 = {}
+0x82B43C50 = {}
+0x82B479D0 = {}
+0x82B4DA78 = {}
+0x82B5A830 = {}
+0x82C1A0B8 = {}
+0x82C1A0C0 = {}
+0x82C1A0C8 = {}
+0x82C1A390 = {}
+0x82C1C4F8 = {}
+0x82C1C500 = {}
+0x82C1C508 = {}
+0x82C1CC10 = {}
+0x82C1CC18 = {}
+0x82C1CC20 = {}
+0x82C2E0F8 = {}
+0x82C30AB0 = {}
+0x82C30AB8 = {}
+0x82C30AC0 = {}
+0x82F445A8 = {}
+0x831A2CF8 = {}
+0x831B0188 = {}
+0x831B0198 = {}
+0x831B1858 = {}
+0x831B1868 = {}
+0x831E77E0 = {}
+0x831E8E28 = {}
+0x831E91A8 = {}
+0x831E91B0 = {}
+0x831E91B8 = {}
+0x831E91C0 = {}
+0x831E91C8 = {}
+0x831EACF8 = {}
+0x831EAD00 = {}
+0x831EAEC8 = {}
+0x83237190 = {}
+0x83237198 = {}
+0x832371A0 = {}
+0x832371A8 = {}
+0x832371B0 = {}
+0x832371B8 = {}
+0x832371C0 = {}
+0x832371C8 = {}
+0x832371D0 = {}
+0x832371D8 = {}
+0x832371E0 = {}
+0x832371E8 = {}
+0x832371F0 = {}
+0x832371F8 = {}
+0x83237200 = {}
+0x83237F30 = {}
+0x8323AD50 = {}
+0x8323AD58 = {}
+0x8323AD60 = {}
+0x8323AD68 = {}
+0x8323ADE8 = {}
+0x8323ADF0 = {}
+0x8323ADF8 = {}
+0x8323AE00 = {}
+0x8323F590 = {}
+0x8323F5A0 = {}
+0x8323F5F8 = {}
+0x8323F668 = {}
+0x8323F718 = {}
+0x8323F728 = {}
+0x8323F7A0 = {}
+0x8323F7E0 = {}
+
 # Módulos auxiliares do FH2 (carregados pelo jogo via XexLoadImage em runtime).
 # guest_path é normalizado (lowercase, sem device prefix) pelo loader.
 [[modules]]
