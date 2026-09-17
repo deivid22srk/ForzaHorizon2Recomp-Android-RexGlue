@@ -31,10 +31,33 @@ bool DynamicLibrary::Load(const std::filesystem::path& path, SymbolResolution mo
   int flags = (mode == SymbolResolution::kImmediate) ? RTLD_NOW : RTLD_LAZY;
   handle_ = dlopen(path.c_str(), flags);
   if (handle_ == nullptr) {
-    // Port Android (naughtybear-restuff-android): capturar o motivo REAL da
-    // falha (ex.: "library libcutils.so not found" em drivers Turnip HAL
-    // dlopenados fora do adrenotools) — sem isso o diagnóstico fica
-    // "dlopen falhou" seco e a causa raiz invisível.
+    // Port Android (ForzaHorizon2Recomp-Android-RexGlue): o codegen registra
+    // os módulos facade com shared_lib_name sem prefixo/sufixo
+    // ("fh2_XMediaFacade_default" — ver module_registry.cpp gerado), mas o
+    // empacotamento Android (jniLibs) só leva arquivos "lib<nome>.so" e o
+    // bionic NÃO normaliza o nome no dlopen. Evidência (device real, 2ª
+    // sessão): "Failed to load shared library for module
+    // 'xmediafacade_default.xex'" sem nenhuma tentativa no nativeloader.
+    // Retentativa com a forma canônica "lib<nome>.so" antes de desistir —
+    // o bionic resolve no nativeLibraryDir do app (namespace do classloader
+    // que carregou este próprio .so). Para nomes já canônicos (caminho
+    // absoluto de driver, "libvulkan_freedreno.so") alt_path == path e o
+    // comportamento é idêntico ao anterior.
+    const std::string name = path.filename().string();
+    std::string alt = name;
+    if (!alt.empty() && alt.rfind("lib", 0) != 0) {
+      alt = "lib" + alt;
+    }
+    if (alt.find(".so") == std::string::npos) {
+      alt += ".so";
+    }
+    const std::filesystem::path alt_path = path.parent_path() / alt;
+    if (alt_path != path) {
+      handle_ = dlopen(alt_path.c_str(), flags);
+    }
+    // Preserva o erro da TENTATIVA CANÔNICA (a mais acionável: nome real do
+    // arquivo empacotado; ex.: "cannot locate symbol" aponta o símbolo
+    // faltante). Se não houve retry, erro da primeira tentativa.
     const char* err = dlerror();
     last_error_ = err ? std::string(err) : std::string();
   } else {

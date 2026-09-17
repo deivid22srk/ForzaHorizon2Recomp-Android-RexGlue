@@ -79,9 +79,11 @@ include("${GENERATED_SOURCES_CMAKE}")
 # ----------------------------------------------------------------------
 # Código recompilado — módulos DLL (facades). Mesmo contrato do
 # dll_targets.cmake gerado, sem a dependência do alvo de codegen.
-# Cada módulo vira um .so próprio com o nome registrado no module_registry
-# (KernelState::LoadUserModule faz dlopen("fh2_SpeechFacade_default") —
-# no Android o bionic resolve lib<name>.so no nativeLibraryDir do app).
+# Cada módulo vira um .so próprio. O module_registry gerado registra
+# "fh2_<Módulo>" (SEM prefixo/sufixo) e o KernelState::LoadUserModule
+# chama dlopen com esse nome cru — no Android o bionic NÃO normaliza;
+# o overlay de dynlib_posix.cpp (src/core) retenta "lib<nome>.so", que é
+# a forma empacotada aqui e resolvida no nativeLibraryDir do app.
 # ----------------------------------------------------------------------
 
 set(RECOMP_MODS

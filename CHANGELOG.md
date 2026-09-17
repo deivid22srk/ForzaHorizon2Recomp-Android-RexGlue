@@ -1,5 +1,26 @@
 # Changelog — ForzaHorizon2Recomp-Android-RexGlue
 
+## v0.1.2 (2026-09-17)
+
+Ciclo de iteração de runtime #3 (evidências da terceira sessão em device).
+
+- **Correção de carregamento dos módulos facade**: o `module_registry`
+  gerado registra `fh2_XMediaFacade_default` sem prefixo/sufixo e o bionic
+  não normaliza nomes no `dlopen` — em device o boot chegava ao
+  `XexLoadImage` dos facades e abortava com "Dirty Disc" (evidência:
+  `log2.zip`, terceira sessão). O overlay
+  `native/overlay/rexglue-sdk/src/core/dynlib_posix.cpp` agora retenta com
+  `lib<nome>.so` (forma empacotada no jniLibs); validado em host com
+  biblioteca de teste (5/5 checks).
+- Rodada 2 da avaliação crítica independente: **9.2/10** — resíduos
+  documentais corrigidos (`release.yml` citado 4x em comentários do
+  `build.gradle.kts` + afirmação falsa de histórico de assinatura;
+  `vblank_hz` em comentários do `PortSettings.kt`; `on_swap` no
+  `NativeBridge`; `RestuffCrashHandler` no `android_main`; issues #1-#4
+  citadas por número nos docs).
+- Confirmação da iteração 5 em device: 85.449 funções registradas, walker
+  de construtores CRT passou, chamadas de kernel reais executando.
+
 ## v0.1.1 (2026-09-17)
 
 Ciclo de iteração de runtime #2 (evidências da segunda sessão em device).

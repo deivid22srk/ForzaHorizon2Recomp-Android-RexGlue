@@ -66,6 +66,25 @@ comentada) → codegen → CI → novo APK.
 - ℹ️ `cvar: duplicate registration` persiste (inofensivo — ver primeira
   sessão).
 
+### Evidências — terceira sessão (2026-09-17, APK run #10, `log2.zip`)
+
+- ✅ **Iteração 5 confirmada em device**: 85.449 funções registradas
+  (+29 exatas) e o walker de construtores CRT **passou** — o boot seguiu
+  para chamadas de kernel reais (`XamApp('GAME')`, ~20 lookups
+  `GetProcAddressByOrdinal` com thunks alocados em 0x832F258C+).
+- ❌ Novo ponto de falha (última etapa do boot): carregamento dos módulos
+  facade — `Failed to load shared library for module
+  'xmediafacade_default.xex'` → o jogo trata como disco sujo
+  (`XamShowDirtyDiscErrorUI`) e aborta. Causa raiz: o `module_registry`
+  gerado registra `fh2_XMediaFacade_default` (sem `lib`/`.so`) e o bionic
+  não normaliza nomes no `dlopen` — caminho nunca exercitado pelo port de
+  referência (jogo de módulo único).
+- ✅ Correção: overlay `native/overlay/rexglue-sdk/src/core/dynlib_posix.cpp`
+  retenta com a forma canônica `lib<nome>.so` (comportamento preservado
+  para nomes já canônicos). Validado em host com lib de teste: 5/5 checks
+  (nome cru carrega, símbolo exportado resolvível, nome canônico inalterado,
+  lib ausente falha com erro acionável no `last_error`).
+
 ## Runtime (esperado, por modelo de port)
 
 - [ ] **Kernel exports do FH2**: o título usa um conjunto próprio de
