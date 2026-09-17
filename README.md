@@ -59,8 +59,9 @@ padrão, triggers analógicos para acelerador/freio).
 - **Renderer Vulkan nativo** do SDK rexglue (Xenia-derived) —
   `VK_KHR_android_surface` sobre a janela SDL3
 - **Virtual gamepad translúcido** (padrão Xbox 360) com ajuste de
-  opacidade/tamanho e haptics — layout pensado para direção (gatilhos
-  analógicos LT/RT nas bordas)
+  opacidade/tamanho e haptics — layout pensado para direção: **LT/RT
+  analógicos no touch** (rampa ao longo da pílula, com feedback visual de
+  preenchimento); analógicos de verdade em gamepad físico
 - **Gamepads Bluetooth/USB** via pipeline HID do SDL3
 - **Boot in-place do ISO** (modelo XenDroid): a imagem é montada onde está,
   sem cópia e sem extração (zero espaço adicional); pasta extraída também é
@@ -71,6 +72,10 @@ padrão, triggers analógicos para acelerador/freio).
   `/storage/emulated/0/Forza Horizon 2 Recomp/logs/` (fallback no storage
   privado) + crash handler nativo com backtrace em `last_crash.txt`
 - **Caches de shader/pipeline** no storage privado do app
+- **Limiter de FPS real** (`fps_cap`): pacing por software no presenter
+  (30/60/90/120/∞), aplicado ao vivo pelo painel rápido (4 dedos)
+- **Refresh do modo de vídeo guest** (`video_mode_refresh_rate`, cvar do
+  SDK) nas Configurações
 - **Painel rápido (4 dedos)**: FPS cap, contador de FPS, controles, sair
 - Tela de seleção de dados com parallax/partículas (paleta FH2) e créditos
 
@@ -137,6 +142,9 @@ são opcionais.
 
 - **Tom (crack) e comunidade** — [rexglue-SDK](https://github.com/rexglue/rexglue-sdk)
 - **Xenia** e **XenonRecomp** — fundamentos do recomp Xbox 360
+- **SDL3 (Simple DirectMedia Layer)** — janela/input no Android; as classes
+  Java `org.libsdl.app` são vendadas sob a **zlib License** (© SDL contributors)
+- **libadrenotools (bylaws)** — carregamento de driver Turnip custom
 - **Hailgames (deivid22srk)** — port Android, template de interface e pipeline
   (baseado no modelo comprovado do port de referência do mesmo autor)
 - Arte de fundo e marca: originais do port (sem material do jogo)
@@ -152,6 +160,11 @@ acompanhe `docs/BACKLOG.md` e as issues.
 mesma assinatura (keystore versionado no repo); upgrades são in-place.
 
 **Vou ser banido?** Este projeto não conecta a serviços online da Microsoft.
+
+**Como confiro a integridade do APK?** Cada run de CI imprime o `SHA-256`
+dos APKs no log (step "Print APK SHA-256") e empacota o `SHA256SUMS.txt`
+junto do artefato. Como o keystore é público (modelo de distribuição do
+port), confira o hash antes de instalar um APK de terceiros.
 
 **Posso contribuir?** Sim — issues de "Unimplemented instruction"/kernel
 export do log são o melhor ponto de partida (ver `docs/RECOMPILATION.md`).

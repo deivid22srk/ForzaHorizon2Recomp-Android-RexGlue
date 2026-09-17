@@ -13,6 +13,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <thread>
 #include <cstdint>
 #include <cmath>
 #include <cstring>
@@ -58,6 +59,16 @@ REXCVAR_DEFINE_BOOL(vulkan_allow_present_mode_mailbox, true, "UI/Vulkan",
 
 REXCVAR_DEFINE_BOOL(vulkan_allow_present_mode_fifo_relaxed, true, "UI/Vulkan",
                     "Allow FIFO relaxed present mode");
+
+// Port Android (Forza Horizon 2 Recomp): software frame limiter do host.
+// 0 = ilimitado; N = teto de N fps aplicado no INÍCIO de cada iteração de
+// paint (o pacing fino por vsync continua sendo do swapchain FIFO — o cap
+// de software só evita rodar acima do teto pedido, poupando térmica/bateria).
+// Definido NESTE TU (o presenter é OBJECT lib → libfh2.so); android_main.cpp
+// faz o DECLARE e o painel rápido/Configurações escrevem via
+// rex::cvar::SetFlagByName("fps_cap", ...) e o fh2.toml no boot.
+REXCVAR_DEFINE_INT32(fps_cap, 0, "Present",
+                     "Software frame cap in fps (0 = unlimited; host-side pacing)");
 
 namespace rex {
 namespace ui {
@@ -1609,6 +1620,29 @@ bool VulkanPresenter::GuestOutputImage::Initialize() {
 }
 
 Presenter::PaintResult VulkanPresenter::PaintAndPresentImpl(bool execute_ui_drawers) {
+  // Port Android (FH2): pacing por software do cvar fps_cap (0 = ilimitado).
+  // O paint anterior acabou de apresentar; dorme o excedente do intervalo
+  // 1/cap antes de começar o próximo paint. O clock é monotônico (steady):
+  // imune a mudanças de hora e a suspensões curtas do painel.
+  {
+    static std::chrono::steady_clock::time_point last_paint_time{};
+    const int32_t fps_cap = REXCVAR_GET(fps_cap);
+    const auto now = std::chrono::steady_clock::now();
+    if (fps_cap > 0) {
+      const auto interval = std::chrono::nanoseconds(1000000000LL / fps_cap);
+      if (last_paint_time.time_since_epoch().count() != 0) {
+        const auto deadline = last_paint_time + interval;
+        if (now < deadline) {
+          std::this_thread::sleep_for(deadline - now);
+        }
+        last_paint_time = std::chrono::steady_clock::now();
+      } else {
+        last_paint_time = now;
+      }
+    } else {
+      last_paint_time = now;
+    }
+  }
   // [SDKMS]: trk starts at function entry (the submission-index lookup is
   // sub-µs; the tracker wait inside dominates when the GPU runs behind).
   SdkmsScope sdkms;

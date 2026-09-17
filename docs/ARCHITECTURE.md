@@ -56,6 +56,16 @@ SAF, HUD de controles e ciclo de vida.
 | Envs nativas `RESTUFF_*` mantidas | Contrato interno dos overlays do SDK (leitura de caches/lost art); renomear aumentaria risco sem ganho. |
 | Keys de prefs `fh2_*` | App novo (applicationId diferente): sem usuários para migrar. |
 
+## Decisões de renderização (mobile)
+
+| Decisão | Racional |
+|---|---|
+| `vulkan_require_geometry_shader = false` e `vulkan_require_fill_mode_non_solid = false` | Nenhum Adreno/Mali/Turnip expõe `geometryShader` — exigir rejeitaria TODOS os devices e abortaria o boot com tela preta. Os caminhos de fallback do renderer cobrem a ausência (mesmo default do overlay `vulkan_device.cpp`). |
+| Present mode FIFO-first (`vulkan_allow_present_mode_immediate/mailbox/fifo_relaxed = false`) | Preferência desktop do SDK (IMMEDIATE > MAILBOX > …) gera presents sem conteúdo novo (judder/consumo) em painéis Android 60/90/120Hz com pacing wall-clock. FIFO alinha ao vsync do painel e é o único modo garantido nos drivers mobile. |
+| **FH2 é 720p fixo por design do título** — NÃO implementar escala dinâmica de resolução | O jogo renderiza internamente a 1280×720 no 360; a "resolução dinâmica" de FH5 não existe no FH2. O upscaling para a tela do device é feito pelo presenter (guest output → swapchain). Não "restaurar" defaults desktop de resolução. |
+| `fps_cap` (cvar do port, overlay do presenter) | Pacing por software no início de `PaintAndPresentImpl` — teto host-side para térmica/bateria (30/60/90/120/∞, aplicado ao vivo via `SetFlagByName`). O pacing fino por vsync segue do FIFO. |
+| `video_mode_refresh_rate` (cvar do SDK) | Taxa do vblank sintético do guest (relógio de vídeo do título); `kRequiresRestart` — aplica no próximo boot. |
+
 ## Threading e memória
 
 - O SDK mapeia a memória guest (X360: 512MB unificada) com `MAP_NORESERVE` e

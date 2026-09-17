@@ -19,7 +19,7 @@ app/src/main/jniLibs/
 # .xex, ISOs e qualquer conteúdo protegido do jogo ficam FORA do repositório.
 *.xex
 *.iso
-recomp/assets/
+recomp/assets/*
 !recomp/assets/.gitkeep
 recomp/generated/
 thirdparty-src/

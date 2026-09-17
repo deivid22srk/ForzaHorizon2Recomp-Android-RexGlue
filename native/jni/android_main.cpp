@@ -43,7 +43,7 @@
 #include <rex/ui/windowed_app.h>
 #include <rex/ui/windowed_app_context_sdl.h>
 
-// Port Android (naughtybear-restuff-android): crash handler nativo — ver
+// Port Android (ForzaHorizon2Recomp-Android-RexGlue): crash handler — ver
 // InstallCrashHandler/RestuffCrashHandler abaixo.
 #include <cerrno>
 #include <cstdint>
@@ -323,7 +323,7 @@ Java_com_deivid22srk_fh2recomp_game_NativeBridge_nativeSetVirtualPadState(
   fh2_android::ApplyVirtualPad(buttons, lx, ly, rx, ry, lt, rt);
 }
 
-// Contador de FPS (design "Mel & Carvão"): total acumulado de quadros
+// Contador de FPS: total acumulado de quadros
 // apresentados pelo backend Vulkan. O contador vive no vulkan_device.cpp
 // (overlay do rexglue-sdk) como g_rexfh2_vk_present_count com linkage
 // C — um atomic relaxed increment por present via trampolim sobre
@@ -340,27 +340,21 @@ Java_com_deivid22srk_fh2recomp_game_NativeBridge_nativeGetPresentCount(JNIEnv*, 
 // ----------------------------------------------------------------------
 // Limite de FPS ao vivo — painel de ajustes rápidos (4 dedos).
 //
-// O fps_cap era boot-only (restuff.toml → cvar::LoadConfig): o usuário
-// trocava 30/60/90/120 nas Configurações e só via efeito no PRÓXIMO boot.
-// O cvar é o ponto único de verdade — o limiter de software do on_swap
-// (hooks.cpp) e o pacing do present thread (native_vk.cpp) o leem POR
-// ITERAÇÃO/FRAME — então escrever aqui aplica na hora, sem reiniciar:
-//   - cap > 0: present thread paceia para 1/cap (a taxa de
-//     vkQueuePresentKHR, que o contador de FPS mede, fica limitada);
-//   - cap = 0: "Ilimitado" (has_new + FIFO/vsync continuam limitando).
-// A persistência segue pelo PortSettings (mesma chave das Configurações,
-// gravada no fechamento do painel) → restuff.toml no próximo boot.
+// O cvar fps_cap é DEFINIDO no overlay do presenter
+// (overlay/rexglue-sdk/src/ui/vulkan/vulkan_presenter.cpp) e o pacing é
+// aplicado no início de PaintAndPresentImpl (loop de paint do host):
+// cap > 0 → o loop dorme o excedente de 1/cap por iteração (a taxa de
+// vkQueuePresentKHR, que o contador de FPS mede, fica limitada); cap = 0
+// → ilimitado (FIFO/vsync continuam limitando). Este arquivo só declara o
+// storage (REXCVAR_DECLARE) e escreve o valor AO VIVO via
+// rex::cvar::SetFlagByName — registry com mutex e validação — sem
+// reiniciar o motor. A persistência segue pelo PortSettings → fh2.toml no
+// próximo boot (kConfig), com o espelho abaixo fechando a corrida de boot.
 //
-// THREADING: a escrita vai por rex::cvar::SetFlagByName — registry com
-// mutex, validação de range/validator e callbacks — em vez de atribuir o
-// storage direto. Os leitores (present thread, thread de render do guest)
-// leem o int32 cru por iteração: palavra alinhada de 4 bytes no arm64 não
-// sofre tearing e os loops têm chamadas opacas (sleep_for, funções
-// externas) que forçam o re-load — o MESMO padrão que o SDK usa para os
-// cvars lidos por-frame em outras threads (vsync worker lê REXCVAR_GET
-// (vsync) por ms). É a convenção do código base, documentada aqui.
-//
-// Definido em hooks.cpp, mesma librestuff.so — o declare resolve no link.
+// THREADING: os leitores (paint thread) leem o int32 cru por iteração —
+// palavra alinhada de 4 bytes no arm64 não sofre tearing e o loop tem
+// chamadas opacas (sleep_for, funções externas) que forçam o re-load — o
+// MESMO padrão que o SDK usa para cvars lidos por-frame em outras threads.
 // ----------------------------------------------------------------------
 REXCVAR_DECLARE(int32_t, fps_cap);
 
@@ -373,9 +367,9 @@ extern "C" std::atomic<int32_t> g_rexfh2_live_fps_cap{-1};
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_deivid22srk_fh2recomp_game_NativeBridge_nativeSetFpsCap(JNIEnv*, jclass, jint fps) {
-  // Snap para o domínio do validador do cvar (hooks.cpp): n == 0 ou
-  // 20 <= n <= 240 — valores 1..19 seriam REJEITADOS pelo SetFlagByName e
-  // o cap ficaria com o valor antigo enquanto o Kotlin acha que mudou.
+  // Snap para o domínio aceitável do cap: n == 0 ou 20 <= n <= 240 —
+  // valores 1..19 seriam rejeitados pelo SetFlagByName e o cap ficaria com
+  // o valor antigo enquanto o Kotlin acha que mudou.
   // (Os chips só mandam 0/30/60/90/120; isto é blindagem.)
   int v = fps < 0 ? 0 : (fps > 240 ? 240 : fps);
   if (v > 0 && v < 20) v = 20;
@@ -393,8 +387,8 @@ int main(int argc, char** argv) {
     ALOG("argv[%d]=%s", i, argv[i]);
   }
 
-  // Opções do launcher chegam como flags --restuff-*: traduz para o formato
-  // que o restuff espera (env do hook de 60fps + env do config path).
+  // Opções do launcher chegam como flags --fh2-*: traduz para o formato
+  // que o motor espera (envs do SDK + config path).
   const char* app_files_dir = nullptr;
   const char* log_file_path = nullptr;
   for (int i = 0; i < argc; ++i) {
@@ -414,13 +408,13 @@ int main(int argc, char** argv) {
     } else if (strncmp(a, "--log-file=", 11) == 0) {
       // Port Android: arquivo de log da sessão (storage público quando
       // gravável) — usado pelo crash handler p/ persistir o backtrace e como
-      // sinalização p/ UI (o restuff.toml log_file aponta pro mesmo lugar).
+      // sinalização p/ UI (o fh2.toml log_file aponta pro mesmo lugar).
       log_file_path = a + 11;
       setenv("RESTUFF_LOG_FILE", log_file_path, 1);
     } else if (strncmp(a, "--log-level=", 12) == 0) {
       // Port Android: nível de log pedido pelo launcher (toggle "Log
       // detalhado"). Vale para a fase EARLY (InitLoggingEarly lê REX_LOG_LEVEL)
-      // e é coerente com o log_level do restuff.toml (mesma origem).
+      // e é coerente com o log_level do fh2.toml (mesma origem).
       setenv("REX_LOG_LEVEL", a + 12, 1);
     } else if (strncmp(a, "--config=", 9) == 0) {
       setenv("REX_CONFIG_PATH", a + 9, 1);
@@ -440,17 +434,12 @@ int main(int argc, char** argv) {
       setenv("RESTUFF_PIPE_CACHE", pipe.c_str(), 1);
       setenv("RESTUFF_PREWARM_FILE", prewarm.c_str(), 1);
     } else if (strncmp(a, "--env=", 6) == 0) {
-      // perf/sd695-30fps v2 (15-e3): pass-through genérico KEY=VALUE para
-      // variáveis RESTUFF_* lidas por statics FUNCIONAIS (inicializados na
-      // primeira chamada, depois do SDL_main — a imensa maioria: todos os
-      // gates de diagnóstico do native_vk/hooks/xma/xthread/presenter).
-      // EXCEÇÕES conhecidas (statics de ESCOPO DE NAMESPACE, avaliados no
-      // dlopen do librestuff.so, ANTES daqui — o override aqui não os alcança):
-      // RESTUFF_DUMP_DRAWS, RESTUFF_EXT_TRUE, RESTUFF_EXTQPROBE
-      // (native_backend_vk.cpp). Cada aplicação é logada via ALOG e
-      // espelhada no log de ARQUIVO pela linha [ENV] (RestuffEnvSummary varre
-      // environ no início do present thread) — a corrida carrega a própria
-      // configuração.
+      // Pass-through genérico KEY=VALUE para variáveis lidas por statics
+      // FUNCIONAIS (inicializados na primeira chamada, depois do SDL_main —
+      // gates de diagnóstico dos overlays do SDK: xthread/presenter etc.).
+      // Exceções: statics de ESCOPO DE NAMESPACE avaliados no dlopen do
+      // libfh2.so, ANTES daqui — o override não os alcança. Cada aplicação
+      // é logada via ALOG.
       const char* kv = a + 6;
       if (const char* eq = strchr(kv, '=')) {
         const std::string key(kv, eq - kv);
@@ -462,16 +451,13 @@ int main(int argc, char** argv) {
 
   // perf/sd695-30fps v2 (15-e3): overrides de env de diagnóstico a partir de
   // <files>/perf_env.txt (linhas KEY=VALUE; '#' comenta; linha vazia e espaço
-  // em branco à esquerda ignorados). Mesma motivação do --env=: a CORRIDA DE
-  // CONTROLE da instrumentação always-on tem que ser possível sem rebuild —
-  // com o arquivo, o usuário cria um texto com "RESTUFF_NO_GPUPASS=1" em
-  // Android/data/com.deivid22srk.restuff/files/ com qualquer gerenciador de
-  // arquivos e a próxima sessão roda o A/B. Cada linha aplicada é logada
-  // (ALOG + aparece no log de ARQUIVO via [ENV]) para que o log de campo
-  // seja auto-descritivo. Vars RESTUFF_* setadas aqui sobrevivem até a linha
-  // [ENV] — exceto as 3 exceções de statics de load-time (ver comentário do
-  // --env=). RENOMEIE/APAGUE o arquivo após o A/B: um arquivo esquecido
-  // re-aplica silenciosamente a cada sessão (detectável pela [ENV]).
+  // em branco à esquerda ignorados) — A/B de instrumentação sem rebuild: o
+  // usuário cria o arquivo na pasta de arquivos DO APP (exposta pelo
+  // gerenciador de arquivos em /storage/emulated/0/Android/data/
+  // com.deivid22srk.fh2recomp/files/) e a próxima sessão aplica. Cada linha
+  // aplicada é logada (ALOG [perf_env]) para o log de campo ser
+  // auto-descritivo. RENOMEIE/APAGUE o arquivo após o A/B: um arquivo
+  // esquecido re-aplica silenciosamente a cada sessão.
   if (app_files_dir != nullptr) {
     char env_path[512];
     snprintf(env_path, sizeof(env_path), "%s/perf_env.txt", app_files_dir);

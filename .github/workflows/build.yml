@@ -7,6 +7,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Uma run por ref: cancela a anterior se um novo push chegar (o runner
+# quebrou 2x por drift em 2026-09 — menos runs = menos janela de drift).
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -35,7 +41,11 @@ jobs:
           # <expected> é gated por __cpp_concepts >= 202002L e o clang <=18
           # define 201907L (P2113 só pousou no clang 19) → std::expected vazio.
           # (Além disso o SDK do rexglue exige CMAKE_CXX_COMPILER = Clang.)
+          # llvm.sh PINADO por SHA256 (supply-chain): o script remoto pode
+          # mudar a qualquer momento — divergência do hash = falha explícita
+          # aqui, não comportamento silenciosamente diferente no runner.
           wget -q https://apt.llvm.org/llvm.sh
+          echo "03878e08f47b66cc95bc4b544b0db3c6d9ce8d60e6cf2492ae357984330a9eae  llvm.sh" | sha256sum -c -
           chmod +x llvm.sh
           sudo ./llvm.sh 19
           echo "CC=clang-19" >> "$GITHUB_ENV"
@@ -66,8 +76,10 @@ jobs:
       # Configure o secret em Settings → Secrets and variables → Actions.
       # ------------------------------------------------------------------
       - name: Check GH_PAT secret
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
         run: |
-          if [[ -z "${{ secrets.GH_PAT }}" ]]; then
+          if [[ -z "$GH_PAT" ]]; then
             echo "::error::Secret GH_PAT ausente. Configure em Settings → Secrets and variables → Actions um PAT com escopo repo e acesso a deivid22srk/forza-horizon-2-xex."
             exit 1
           fi
@@ -133,6 +145,11 @@ jobs:
           cp app/build/outputs/apk/release/*.apk dist/ForzaHorizon2-Recomp-arm64-release.apk
           cp app/build/outputs/apk/debug/*.apk dist/ForzaHorizon2-Recomp-arm64-debug.apk
           ls -la dist/
+
+      - name: Print APK SHA-256 (integridade p/ o usuário conferir)
+        run: |
+          echo "SHA-256 dos APKs desta run:"
+          sha256sum dist/*.apk | tee dist/SHA256SUMS.txt
 
       - name: Upload APKs
         uses: actions/upload-artifact@v4

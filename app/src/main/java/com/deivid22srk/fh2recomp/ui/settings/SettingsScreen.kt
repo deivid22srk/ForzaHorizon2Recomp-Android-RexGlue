@@ -176,7 +176,8 @@ fun SettingsScreen(
             Spacer(Modifier.height(14.dp))
 
             // ======================== DESEMPENHO =========================
-            // Aplicado de verdade: fps_cap e vblank_hz no fh2.toml
+            // Aplicado de verdade: fps_cap (cvar do presenter overlay) e
+            // video_mode_refresh_rate (cvar do SDK) no fh2.toml
             // gerado pelo GameActivity antes do SDL_main. O contador de
             // FPS lê os presents Vulkan reais (JNI nativeGetPresentCount).
             SectionHeader("Desempenho")
@@ -203,7 +204,7 @@ fun SettingsScreen(
 
             Spacer(Modifier.height(18.dp))
             SliderRow(
-                label = "Vblank sintético",
+                label = "Refresh do modo de vídeo (guest)",
                 valueText = "${settings.vblankHz} Hz",
                 value = settings.vblankHz.toFloat(),
                 valueRange = 30f..240f,
@@ -212,8 +213,9 @@ fun SettingsScreen(
                 onSettingsChange { it.copy(vblankHz = value.roundToInt()) }
             }
             Text(
-                text = "Relógio de vídeo do motor — ajuste fino para painéis " +
-                    "de alta taxa de atualização.",
+                text = "Taxa do vblank sintético do título (cvar " +
+                    "video_mode_refresh_rate do SDK; aplica no próximo boot). " +
+                    "O teto de FPS do APRESENTAÇÃO fica nos chips acima (fps_cap, ao vivo).",
                 color = PortPalette.textTertiary,
                 style = PortType.rowSub
             )

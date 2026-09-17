@@ -61,6 +61,7 @@ Histórico real do FH2 (todas documentadas no manifest):
 | 1 | 10 endereços (0x8305E91C, 0x82C9EFF0…F010, 0x82E83A70, 0x830453EC, 0x8305E804) | tail-calls diretos fora de função detectada |
 | 2 | 4 endereços (0x82CBFCB8…CD0) | jump table alcançada a partir dos alvos da iteração 1 |
 | 3 | 1 endereço (0x855B80→0x88055B80, XMediaFacade) | `b` direto a partir de 0x880503D0 |
+| 4 | 1 endereço (0x83243750) | chamada indireta em DEVICE REAL (ponteiro de função/vtable) — crash function_dispatcher.cpp:39 ~200ms após OnInitialize; primeira evidência de execução guest |
 
 Convenção: cada entrada nova recebe comentário com a iteração e o motivo.
 **Nenhuma entrada é "chutada"** — todas vêm da saída do analisador.

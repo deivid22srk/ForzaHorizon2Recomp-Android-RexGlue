@@ -359,13 +359,33 @@ class VirtualGamepadView(
             }
             val trigger = if (best.kind == Kind.TRIGGER) best.bit else 0
             assignments[pointerId] = Assignment(best, mask, trigger)
-            if (trigger == BIT_LT) lt = 32767
-            if (trigger == BIT_RT) rt = 32767
+            // Gatilho ANALÓGICO: o valor acompanha a posição do toque ao longo
+            // da pílula (ver triggerValueAt) e é re-avaliado durante o arrasto
+            // (movePointer) — o desenho da pílula reflete o nível em tempo real.
+            if (trigger == BIT_LT) lt = triggerValueAt(best, y)
+            if (trigger == BIT_RT) rt = triggerValueAt(best, y)
             syncButtonBitsFromAssignments()
             hapticTap()
             fire()
             invalidate()
         }
+    }
+
+    /**
+     * Gatilho analógico: mapeia a posição do toque ao longo da pílula para
+     * 0..32767. Centro da pílula = piso de 40% (tocar já dá resposta
+     * perceptível — importante para freio em corrida); base (parte de baixo)
+     * = 100%. O arrasto aumenta/diminui suavemente, imitando a imprecisão
+     * desejável de um gatilho analógico físico em touch.
+     */
+    private fun triggerValueAt(pad: Pad, y: Float): Int {
+        val cyPx = pad.cy * viewH
+        val span = (pad.radius * 1.45f).coerceAtLeast(1f)  // mesmo raio de hit do assign
+        val t = ((y - cyPx) / span).coerceIn(-1f, 1f)      // -1 topo .. +1 base
+        val norm = ((t + 1f) / 2f).coerceIn(0f, 1f)        // 0 topo .. 1 base
+        val floor = 0.40f
+        val v = floor + (1f - floor) * norm
+        return (v * 32767f).toInt().coerceIn(0, 32767)
     }
 
     /**
@@ -420,6 +440,14 @@ class VirtualGamepadView(
         }
         // D-pad vivo: direção re-avaliada durante o arrasto.
         val asg = assignments[pointerId] ?: return
+        // Gatilho vivo: valor analógico re-avaliado durante o arrasto
+        // (deslizar o dedo para baixo na pílula acelera/freia de verdade).
+        if (asg.trigger == BIT_LT) {
+            lt = triggerValueAt(asg.pad, y); fire(); invalidate(); return
+        }
+        if (asg.trigger == BIT_RT) {
+            rt = triggerValueAt(asg.pad, y); fire(); invalidate(); return
+        }
         if (asg.pad.kind != Kind.DPAD) return
         val newMask = dpadMaskAt(asg.pad, x, y)
         if (newMask != asg.mask) {

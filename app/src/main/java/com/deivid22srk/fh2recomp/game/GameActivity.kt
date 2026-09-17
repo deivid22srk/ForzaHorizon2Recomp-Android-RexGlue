@@ -152,7 +152,9 @@ class GameActivity : SDLActivity() {
                 appendLine("log_flush_interval = 1")
                 appendLine("fullscreen = false")
                 appendLine("fps_cap = ${settings.fpsLimit.fps}")
-                appendLine("vblank_hz = ${settings.vblankHz}")
+                // Taxa de vblank do GUEST (relógio de vídeo do título) — cvar REAL do
+                // SDK (video_mode_refresh_rate, double, 24-240, requires-restart).
+                appendLine("video_mode_refresh_rate = ${settings.vblankHz}")
                 // GPUs móveis não expõem geometryShader (nem Turnip nem
                 // Adreno/Mali) — exigir rejeita TODOS os devices → tela
                 // preta. O default nativo também foi corrigido; isto é o
