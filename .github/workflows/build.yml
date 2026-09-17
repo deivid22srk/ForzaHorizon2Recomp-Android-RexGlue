@@ -1,0 +1,156 @@
+name: Build APK (Forza Horizon 2 Recomp Android)
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+
+    steps:
+      - name: Checkout (com submódulos)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install host toolchain (cmake, ninja, clang 19)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build curl git \
+            libx11-xcb-dev libx11-dev libwayland-dev wayland-protocols libxkbcommon-dev \
+            libasound2-dev libpulse-dev
+          # clang 19 é OBRIGATÓRIO com as headers libstdc++ 14 do ubuntu-24.04:
+          # <expected> é gated por __cpp_concepts >= 202002L e o clang <=18
+          # define 201907L (P2113 só pousou no clang 19) → std::expected vazio.
+          # (Além disso o SDK do rexglue exige CMAKE_CXX_COMPILER = Clang.)
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 19
+          echo "CC=clang-19" >> "$GITHUB_ENV"
+          echo "CXX=clang++-19" >> "$GITHUB_ENV"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android packages (platform, build-tools, NDK)
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" > /dev/null
+          yes | sdkmanager --licenses > /dev/null || true
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+
+      # ------------------------------------------------------------------
+      # .xex do jogo (repo PRIVADO do portador, via secrets.GH_PAT).
+      # Os binários NUNCA entram no repositório (gitignore) e NUNCA são
+      # empacotados no APK — servem APENAS para o codegen do recomp no host.
+      # Configure o secret em Settings → Secrets and variables → Actions.
+      # ------------------------------------------------------------------
+      - name: Check GH_PAT secret
+        run: |
+          if [[ -z "${{ secrets.GH_PAT }}" ]]; then
+            echo "::error::Secret GH_PAT ausente. Configure em Settings → Secrets and variables → Actions um PAT com escopo repo e acesso a deivid22srk/forza-horizon-2-xex."
+            exit 1
+          fi
+
+      - name: Apply port overlays
+        run: bash scripts/apply_overlays.sh
+
+      # Testes de unidade Kotlin: falham em segundos, ANTES do build nativo
+      # (compila todo o Kotlin do app, pegando erro de compilação cedo).
+      - name: Kotlin unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:testDebugUnitTest
+
+      - name: Host codegen (rexglue CLI + .xex do FH2)
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: bash scripts/build_host_codegen.sh
+
+      - name: Native Android build (libfh2.so + facades)
+        run: bash scripts/build_android_native.sh
+
+      - name: Build APK (Gradle)
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon :app:assembleRelease :app:assembleDebug
+
+      - name: Verify APK native libs (fail-fast)
+        run: |
+          python3 - <<'EOF'
+          import zipfile, glob, sys
+          apk = glob.glob("app/build/outputs/apk/release/*.apk")[0]
+          print(f"Verificando: {apk}")
+          z = zipfile.ZipFile(apk)
+          libs = sorted(n for n in z.namelist()
+                        if n.startswith("lib/arm64-v8a/") and n.endswith(".so"))
+          print("Libs nativas empacotadas:")
+          for l in libs:
+              print(f"  {l}")
+          required = {
+              "lib/arm64-v8a/libfh2.so",
+              "lib/arm64-v8a/libfh2_SpeechFacade_default.so",
+              "lib/arm64-v8a/libfh2_XMediaFacade_default.so",
+              "lib/arm64-v8a/librexruntime.so",
+              "lib/arm64-v8a/libc++_shared.so",
+              # AdrenoTools (driver Turnip custom): hooks precisam estar no
+              # APK (useLegacyPackaging=true extrai p/ nativeLibraryDir).
+              "lib/arm64-v8a/libadrenotools.so",
+              "lib/arm64-v8a/libmain_hook.so",
+              "lib/arm64-v8a/libhook_impl.so",
+              "lib/arm64-v8a/libfile_redirect_hook.so",
+              "lib/arm64-v8a/libgsl_alloc_hook.so",
+          }
+          missing = required - set(libs)
+          if missing:
+              sys.exit(f"ERRO FATAL: libs ausentes do APK: {sorted(missing)}")
+          print("OK: todas as libs nativas obrigatórias estão no APK")
+          EOF
+
+      - name: Rename artifacts
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk dist/ForzaHorizon2-Recomp-arm64-release.apk
+          cp app/build/outputs/apk/debug/*.apk dist/ForzaHorizon2-Recomp-arm64-debug.apk
+          ls -la dist/
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: forzahorizon2-recomp-apk
+          path: dist/*.apk
+          if-no-files-found: error
+
+      - name: Upload debug symbols (*.so.unstripped)
+        # ARM PERF/diagnóstico: line tables do build (-gline-tables-only).
+        # O APK recebe as libs stripadas (lean); ESTE artefato resolve
+        # backtraces "module+0xOFFSET" offline:
+        # llvm-symbolizer --obj=libfh2.so.unstripped 0xOFFSET
+        uses: actions/upload-artifact@v4
+        with:
+          name: forzahorizon2-recomp-debug-symbols
+          path: |
+            build/android/*/libfh2.so.unstripped
+            build/android/*/libfh2_*.so.unstripped
+          if-no-files-found: warn
+
+      - name: Upload build logs em falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            build/host-codegen/CMakeCache.txt
+            build/android/arm64-v8a/CMakeCache.txt
+          if-no-files-found: ignore
