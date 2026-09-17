@@ -54,8 +54,9 @@ jobs:
 
       - name: Install Android packages (platform, build-tools, NDK)
         run: |
-          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" > /dev/null
-          yes | sdkmanager --licenses > /dev/null || true
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" > /dev/null
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
 
       # ------------------------------------------------------------------
