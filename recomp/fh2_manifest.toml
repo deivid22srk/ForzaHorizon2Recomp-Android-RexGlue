@@ -123,6 +123,32 @@ includes = []
 0x83198170 = {}
 0x8319EB58 = {}
 
+# Iteração 8 (device real, log5.zip 2026-09-17, moto g34 5G): a 6ª sessão
+# confirmou a iteração 7 — 85.470 funções registradas (+21 exatas) e o boot
+# passou da enumeração de conteúdo; o pipeline de áudio entrou em operação
+# (XAudioRegisterRenderDriverClient, endpoint 6ch/48kHz, SDLCallback ativo).
+# Novo crash na thread principal, durante a init de áudio/mídia (após probes
+# de '\Media\Audio\Placeholder'): "[FATAL] Call to invalid or unregistered
+# function at guest address 0x830387E0" a partir de sub_83046DA0 (+1680).
+# Auditoria extents-aware (tools/audit_vtable_family.py, janela
+# 0x82264000..0x82265000): 3 alvos não registrados, verificação individual:
+#   - 0x830387E0 (ALVO DO CRASH; slot 0x82264688): thunk de 2 instruções
+#     (li r5,1; b 0x83033468 — registrada), gap exato entre thunks
+#     (antecessor desvia com b incondicional; próxima registrada
+#     sub_830387E8 começa no fim da extensão de 8 bytes);
+#   - 0x8303EE88 (slot 0x8226493C): função real de 28 bytes (carrega campo
+#     0x80A0 do objeto, null-check, erro 0x1F, blr), antecessor termina em
+#     bctr, próxima registrada (sub_8303EEA4) começa exatamente no fim da
+#     extensão — sem overlap;
+#   - 0x83045378 (slot 0x82264AB8): REJEITADO pelo filtro — código no
+#     MEIO de função existente (loop com b para trás; a varredura linear
+#     cruza 0x830453EC já registrada). Tagar quebraria a tradução —
+#     exatamente o modo de falha da iteração 5. Se o jogo um dia chamar
+#     esse slot, investigar a função contenedora (possível over-extension
+#     da análise), NÃO tagar às cegas.
+0x830387E0 = {}
+0x8303EE88 = {}
+
 # Módulos auxiliares do FH2 (carregados pelo jogo via XexLoadImage em runtime).
 # guest_path é normalizado (lowercase, sem device prefix) pelo loader.
 [[modules]]

@@ -85,6 +85,25 @@ comentada) → codegen → CI → novo APK.
   (nome cru carrega, símbolo exportado resolvível, nome canônico inalterado,
   lib ausente falha com erro acionável no `last_error`).
 
+### Evidências — sexta sessão (2026-09-17, APK run #15, `log5.zip`)
+
+- ✅ **Iteração 7 confirmada em device**: 85.470 funções registradas (+21
+  exatas) e o boot passou da enumeração de conteúdo (ponto de crash da
+  5ª sessão).
+- ✅ **Pipeline de áudio operando**: `XAudioRegisterRenderDriverClient`,
+  `AudioSystem::RegisterClient` (endpoint 6 ch @ 48 kHz, formato 0x8120),
+  `SDLCallback` ativo (silêncio — jogo ainda não misturou frames).
+- ❌ Novo ponto de falha (thread principal, init de áudio/mídia):
+  `[FATAL] Call to invalid or unregistered function at guest address
+  0x830387E0` a partir de `sub_83046DA0` (+1680) — thunk de vtable.
+- ✅ Correção (iteração 8): auditoria extents-aware na janela
+  `0x82264000..0x82265000` → 3 alvos: `0x830387E0` (crash, thunk seguro) e
+  `0x8303EE88` (função real de 28B) tagados; `0x83045378` REJEITADO pelo
+  filtro (código no meio de função registrada — ver comentário no
+  manifest).
+- ⚠️ Observações não fatais: `stringtables\en\` / `cache:\` /
+  `gamecontrollerdb.txt` / `\Device\Image` (ver 4ª/5ª sessões).
+
 ### Evidências — quinta sessão (2026-09-17, APK run #14, `log4.zip`)
 
 - ✅ **Iteração 6 confirmada em device**: o XMediaFacade passou da init CRT

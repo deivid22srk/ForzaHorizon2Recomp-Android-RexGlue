@@ -1,5 +1,36 @@
 # Changelog — ForzaHorizon2Recomp-Android-RexGlue
 
+## v0.1.5 (2026-09-17)
+
+Ciclo de iteração de runtime #6 (evidências da sexta sessão em device,
+`log5.zip`).
+
+- **Confirmação da iteração 7**: 85.470 funções registradas (+21 exatas) e o
+  boot passou da enumeração de conteúdo. **O pipeline de áudio entrou em
+  operação pela primeira vez**: `XAudioRegisterRenderDriverClient`,
+  `AudioSystem::RegisterClient` (callback 831B1D50), endpoint
+  "System audio playback device" 6 ch @ 48 kHz (formato 0x8120) e
+  `SDLCallback` ativo (silêncio inicial, sem frames enfileirados).
+- **Iteração 8 de codegen — 2 novos alvos tagados** no
+  `[entrypoint.functions]`. Evidência: `[FATAL] Call to invalid or
+  unregistered function at guest address 0x830387E0` a partir de
+  `sub_83046DA0` (+1680), na thread principal durante a init de
+  áudio/mídia (após probes de `\Media\Audio\Placeholder`).
+- **Auditoria extents-aware** (`tools/audit_vtable_family.py`, janela
+  `0x82264000..0x82265000`): 3 alvos não registrados, verificados
+  individualmente —
+  - `0x830387E0` (alvo do crash; slot `0x82264688`): thunk de 2 instruções
+    (`li r5,1; b 0x83033468`, registrada), gap exato entre thunks — TAGADO;
+  - `0x8303EE88` (slot `0x8226493C`): função real de 28 bytes (carrega o
+    campo `0x80A0` do objeto, null-check, erro `0x1F`, `blr`), sem overlap
+    com a próxima registrada (`sub_8303EEA4`) — TAGADO;
+  - `0x83045378` (slot `0x82264AB8`): **REJEITADO** pelo filtro — código no
+    meio de função existente (a extensão linear cruza `0x830453EC`, já
+    registrada). Tagar quebraria a tradução — o filtro extents-aware
+    funcionando exatamente como projetado; documentado no manifest para
+    investigação futura da função contenedora (possível over-extension da
+    análise estática).
+
 ## v0.1.4 (2026-09-17)
 
 Ciclo de iteração de runtime #5 (evidências da quinta sessão em device,
